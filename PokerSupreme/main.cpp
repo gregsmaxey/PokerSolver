@@ -41,6 +41,10 @@ enum class SUITS
 const int NUM_ITERATIONS = 10;
 const int NUM_CARDS = (int)RANKS::NUM * (int)SUITS::NUM;
 const int BET_AMOUNT = 2;
+const bool HARD_CODE_FLOP = true;
+const int HARD_CODE_FLOP0 = 48;
+const int HARD_CODE_FLOP1 = 49;
+const int HARD_CODE_FLOP2 = 50;
 
 class Node
 {
@@ -701,12 +705,28 @@ public:
     
     void ShuffleDeck(int deck[])
     {
-        for (int c1 = NUM_CARDS - 1; c1 > 0; c1--)
+        for (int i = 0; i < NUM_CARDS; i++)
         {
-            int c2 = rand() % (c1 + 1);
-            int tmp = deck[c1];
-            deck[c1] = deck[c2];
-            deck[c2] = tmp;
+            deck[i] = i;
+        }
+        if (HARD_CODE_FLOP)
+        {
+            swap(deck[HARD_CODE_FLOP0], deck[0]);
+            swap(deck[HARD_CODE_FLOP1], deck[1]);
+            swap(deck[HARD_CODE_FLOP2], deck[2]);
+            for (int c1 = NUM_CARDS - 1; c1 > 3; c1--)
+            {
+                int c2 = rand() % (c1 - 2) + 3;
+                swap(deck[c1], deck[c2]);
+            }
+        }
+        else
+        {
+            for (int c1 = NUM_CARDS - 1; c1 > 0; c1--)
+            {
+                int c2 = rand() % (c1 + 1);
+                swap(deck[c1], deck[c2]);
+            }
         }
     }
     
@@ -726,10 +746,6 @@ public:
     void Solve()
     {
         int deck[NUM_CARDS];
-        for (int i = 0; i < NUM_CARDS; i++)
-        {
-            deck[i] = i;
-        }
         double ev = 0;
         for (int iteration = 0; iteration < NUM_ITERATIONS; iteration++)
         {

@@ -46,9 +46,8 @@ enum class SUITS
 };
 
 //todo: I see both 3xy and 3yx in the infosets
-//todo: turn and river!!!
 
-const int NUM_ITERATIONS = 1000000;
+const int NUM_ITERATIONS = 10000000;
 const int BET_AMOUNT = 2;
 const double BET_RAKE_ON_PLAYER_WIN = 0.0;
 const bool HARD_CODE_FLOP = true;
@@ -64,6 +63,8 @@ const bool FILTER_PRINT = true;
 const string HISTORY_TO_PRINT = "p";
 
 const int NUM_CARDS = (int)RANKS::NUM * (int)SUITS::NUM;
+
+HandEvaluator handEvaluator;
 
 class Node
 {
@@ -164,187 +165,6 @@ public:
     }
 };
 
-void SortHand(int _playerHand[])
-{
-    int playerHand[5];
-    playerHand[0] = _playerHand[0];
-    playerHand[1] = _playerHand[1];
-    playerHand[2] = _playerHand[2];
-    playerHand[3] = _playerHand[3];
-    playerHand[4] = _playerHand[4];
-    
-    if (playerHand[0] > playerHand[1])
-        swap(playerHand[0], playerHand[1]);
-    if (playerHand[2] > playerHand[3])
-        swap(playerHand[2], playerHand[3]);
-    
-    if (playerHand[0] > playerHand[2])
-    {
-        swap(playerHand[0], playerHand[2]);
-        swap(playerHand[1], playerHand[3]);
-    }
-    
-    if (playerHand[4] > playerHand[2])
-    {
-        if (playerHand[4] > playerHand[3])  // playerHand[0] playerHand[2] playerHand[3] playerHand[4]
-        {
-            if (playerHand[1] > playerHand[3])
-            {
-                if (playerHand[1] > playerHand[4])
-                {
-                    _playerHand[0] = playerHand[0];
-                    _playerHand[1] = playerHand[2];
-                    _playerHand[2] = playerHand[3];
-                    _playerHand[3] = playerHand[4];
-                    _playerHand[4] = playerHand[1];
-                }
-                else
-                {
-                    _playerHand[0] = playerHand[0];
-                    _playerHand[1] = playerHand[2];
-                    _playerHand[2] = playerHand[3];
-                    _playerHand[3] = playerHand[1];
-                    _playerHand[4] = playerHand[4];
-                }
-            }
-            else
-            {
-                if (playerHand[1] < playerHand[2])
-                {
-                    _playerHand[0] = playerHand[0];
-                    _playerHand[1] = playerHand[1];
-                    _playerHand[2] = playerHand[2];
-                    _playerHand[3] = playerHand[3];
-                    _playerHand[4] = playerHand[4];
-                }
-                else
-                {
-                    _playerHand[0] = playerHand[0];
-                    _playerHand[1] = playerHand[2];
-                    _playerHand[2] = playerHand[1];
-                    _playerHand[3] = playerHand[3];
-                    _playerHand[4] = playerHand[4];
-                }
-            }
-        }
-        else  // playerHand[0] playerHand[2] playerHand[4] playerHand[3]
-        {
-            if (playerHand[1] > playerHand[4])
-            {
-                if (playerHand[1] > playerHand[3])
-                {
-                    _playerHand[0] = playerHand[0];
-                    _playerHand[1] = playerHand[2];
-                    _playerHand[2] = playerHand[4];
-                    _playerHand[3] = playerHand[3];
-                    _playerHand[4] = playerHand[1];
-                }
-                else
-                {
-                    _playerHand[0] = playerHand[0];
-                    _playerHand[1] = playerHand[2];
-                    _playerHand[2] = playerHand[4];
-                    _playerHand[3] = playerHand[1];
-                    _playerHand[4] = playerHand[3];
-                }
-            }
-            else
-            {
-                if (playerHand[1] < playerHand[2])
-                {
-                    _playerHand[0] = playerHand[0];
-                    _playerHand[1] = playerHand[1];
-                    _playerHand[2] = playerHand[2];
-                    _playerHand[3] = playerHand[4];
-                    _playerHand[4] = playerHand[3];
-                }
-                else
-                {
-                    _playerHand[0] = playerHand[0];
-                    _playerHand[1] = playerHand[2];
-                    _playerHand[2] = playerHand[1];
-                    _playerHand[3] = playerHand[4];
-                    _playerHand[4] = playerHand[3];
-                }
-            }
-        }
-    }
-    else
-    {
-        if (playerHand[4] < playerHand[0])  // playerHand[4] playerHand[0] playerHand[2] playerHand[3]
-        {
-            if (playerHand[1] > playerHand[2])
-            {
-                if (playerHand[1] > playerHand[3])
-                {
-                    _playerHand[0] = playerHand[4];
-                    _playerHand[1] = playerHand[0];
-                    _playerHand[2] = playerHand[2];
-                    _playerHand[3] = playerHand[3];
-                    _playerHand[4] = playerHand[1];
-                }
-                else
-                {
-                    _playerHand[0] = playerHand[4];
-                    _playerHand[1] = playerHand[0];
-                    _playerHand[2] = playerHand[2];
-                    _playerHand[3] = playerHand[1];
-                    _playerHand[4] = playerHand[3];
-                }
-            }
-            else
-            {
-                _playerHand[0] = playerHand[4];
-                _playerHand[1] = playerHand[0];
-                _playerHand[2] = playerHand[1];
-                _playerHand[3] = playerHand[2];
-                _playerHand[4] = playerHand[3];
-            }
-        }
-        else  // playerHand[0] playerHand[4] playerHand[2] playerHand[3]
-        {
-            if (playerHand[1] > playerHand[2])
-            {
-                if (playerHand[1] > playerHand[3])
-                {
-                    _playerHand[0] = playerHand[0];
-                    _playerHand[1] = playerHand[4];
-                    _playerHand[2] = playerHand[2];
-                    _playerHand[3] = playerHand[3];
-                    _playerHand[4] = playerHand[1];
-                }
-                else
-                {
-                    _playerHand[0] = playerHand[0];
-                    _playerHand[1] = playerHand[4];
-                    _playerHand[2] = playerHand[2];
-                    _playerHand[3] = playerHand[1];
-                    _playerHand[4] = playerHand[3];
-                }
-            }
-            else
-            {
-                if (playerHand[1] < playerHand[4])
-                {
-                    _playerHand[0] = playerHand[0];
-                    _playerHand[1] = playerHand[1];
-                    _playerHand[2] = playerHand[4];
-                    _playerHand[3] = playerHand[2];
-                    _playerHand[4] = playerHand[3];
-                }
-                else
-                {
-                    _playerHand[0] = playerHand[0];
-                    _playerHand[1] = playerHand[4];
-                    _playerHand[2] = playerHand[1];
-                    _playerHand[3] = playerHand[2];
-                    _playerHand[4] = playerHand[3];
-                }
-            }
-        }
-    }
-}
-
 string RankToString(int rank)
 {
     RANKS rankEnum = (RANKS)rank;
@@ -424,267 +244,33 @@ string CardToString(int rank, int suit)
     return c + s;
 }
 
-enum class HAND_VALUE_TYPE
-{
-    HIGH_CARD = 0,
-    PAIR,
-    TWO_PAIR,
-    THREE_OF_A_KIND,
-    STRAIGHT,
-    FLUSH,
-    FULL_HOUSE,
-    FOUR_OF_A_KIND,
-    STRAIGHT_FLUSH,
-};
-
-class HandValue
-{
-public:
-    HAND_VALUE_TYPE handValueType;
-    int rank;   // the high card of a straight, the rank of a pair, trips, or quads, the top rank of a two-pair, the trips in a full house.
-    int secondaryRank;      // the bottom pair in a two-pair.  the pair in a full house.
-    int kickerValue;  // constructed from the ranks of all five cards
-    
-    bool operator==(const HandValue& other) {
-        return handValueType == other.handValueType &&
-        rank == other.rank &&
-        secondaryRank == other.secondaryRank &&
-        kickerValue == other.kickerValue;
-    }
-    
-    HandValue(int playerHand[])
-    {
-        SortHand(playerHand);
-        
-        int ranks[5];
-        int suits[5];
-        for (int i = 0; i < 5; i++)
-        {
-            // 0 refers to "2".  12 refers to "A"
-            ranks[i] = playerHand[i] / (int)SUITS::NUM;
-            suits[i] = playerHand[i] % (int)SUITS::NUM;
-        }
-        
-        rank = 0;
-        secondaryRank = 0;
-        kickerValue =
-        playerHand[0] +
-        (playerHand[1] << 4) +
-        (playerHand[2] << 8) +
-        (playerHand[3] << 12) +
-        (playerHand[4] << 16);
-        
-        bool hasFlush = false;
-        bool hasStraight = false;
-        int straightRank = 0;
-        if (ranks[0] == ranks[1] - 1 &&
-            ranks[0] == ranks[2] - 2 &&
-            ranks[0] == ranks[3] - 3 &&
-            ranks[0] == ranks[4] - 4)
-        {
-            hasStraight = true;
-            straightRank = ranks[4];
-        }
-        if (ranks[4] == (int)RANKS::A &&
-            ranks[0] == (int)RANKS::TWO &&
-            ranks[1] == (int)RANKS::THREE &&
-            ranks[2] == (int)RANKS::FOUR &&
-            ranks[3] == (int)RANKS::FIVE)
-        {
-            hasStraight = true;
-            straightRank = (int)RANKS::FIVE;
-        }
-        hasFlush = (suits[0] == suits[1] &&
-                    suits[0] == suits[2] &&
-                    suits[0] == suits[3] &&
-                    suits[0] == suits[4]);
-        
-        HAND_VALUE_TYPE pairType = HAND_VALUE_TYPE::HIGH_CARD;
-        int pairRank = 0;
-        int pairSecondaryRank = 0;
-        
-        int pairConfiguration =
-        (ranks[0] == ranks[1]) |
-        (ranks[1] == ranks[2]) << 1 |
-        (ranks[2] == ranks[3]) << 2 |
-        (ranks[3] == ranks[4]) << 3;
-        
-        switch(pairConfiguration)
-        {
-            case 0b0001:
-                pairType = HAND_VALUE_TYPE::PAIR;
-                pairRank = ranks[0];
-                break;
-            case 0b0010:
-                pairType = HAND_VALUE_TYPE::PAIR;
-                pairRank = ranks[1];
-                break;
-            case 0b0100:
-                pairType = HAND_VALUE_TYPE::PAIR;
-                pairRank = ranks[2];
-                break;
-            case 0b1000:
-                pairType = HAND_VALUE_TYPE::PAIR;
-                pairRank = ranks[3];
-                break;
-            case 0b0011:
-                pairType = HAND_VALUE_TYPE::THREE_OF_A_KIND;
-                pairRank = ranks[0];
-                break;
-            case 0b0110:
-                pairType = HAND_VALUE_TYPE::THREE_OF_A_KIND;
-                pairRank = ranks[1];
-                break;
-            case 0b1100:
-                pairType = HAND_VALUE_TYPE::THREE_OF_A_KIND;
-                pairRank = ranks[2];
-                break;
-            case 0b0111:
-                pairType = HAND_VALUE_TYPE::FOUR_OF_A_KIND;
-                pairRank = ranks[0];
-                break;
-            case 0b1110:
-                pairType = HAND_VALUE_TYPE::FOUR_OF_A_KIND;
-                pairRank = ranks[1];
-                break;
-            case 0b1011:
-                pairType = HAND_VALUE_TYPE::FULL_HOUSE;
-                pairRank = ranks[0];
-                pairSecondaryRank = ranks[3];
-                break;
-            case 0b1101:
-                pairType = HAND_VALUE_TYPE::FULL_HOUSE;
-                pairRank = ranks[2];
-                pairSecondaryRank = ranks[0];
-                break;
-            case 0b0101:
-                pairType = HAND_VALUE_TYPE::TWO_PAIR;
-                pairRank = ranks[2];
-                pairSecondaryRank = ranks[0];
-                break;
-            case 0b1001:
-                pairType = HAND_VALUE_TYPE::TWO_PAIR;
-                pairRank = ranks[3];
-                pairSecondaryRank = ranks[0];
-                break;
-            case 0b1010:
-                pairType = HAND_VALUE_TYPE::TWO_PAIR;
-                pairRank = ranks[3];
-                pairSecondaryRank = ranks[1];
-                break;
-        }
-        
-        if (hasStraight && hasFlush)
-        {
-            handValueType = HAND_VALUE_TYPE::STRAIGHT_FLUSH;
-            rank = straightRank;
-            return;
-        }
-        if (pairType == HAND_VALUE_TYPE::FOUR_OF_A_KIND)
-        {
-            handValueType = HAND_VALUE_TYPE::FOUR_OF_A_KIND;
-            rank = pairRank;
-            return;
-        }
-        if (pairType == HAND_VALUE_TYPE::FULL_HOUSE)
-        {
-            handValueType = HAND_VALUE_TYPE::FULL_HOUSE;
-            rank = pairRank;
-            secondaryRank = pairSecondaryRank;
-            return;
-        }
-        if (hasFlush)
-        {
-            handValueType = HAND_VALUE_TYPE::FLUSH;
-            return;
-        }
-        if (hasStraight)
-        {
-            handValueType = HAND_VALUE_TYPE::STRAIGHT;
-            rank = straightRank;
-            return;
-        }
-        if (pairType == HAND_VALUE_TYPE::THREE_OF_A_KIND)
-        {
-            handValueType = HAND_VALUE_TYPE::THREE_OF_A_KIND;
-            rank = pairRank;
-            return;
-        }
-        if (pairType == HAND_VALUE_TYPE::TWO_PAIR)
-        {
-            handValueType = HAND_VALUE_TYPE::TWO_PAIR;
-            rank = pairRank;
-            secondaryRank = pairSecondaryRank;
-            return;
-        }
-        if (pairType == HAND_VALUE_TYPE::PAIR)
-        {
-            handValueType = HAND_VALUE_TYPE::PAIR;
-            rank = pairRank;
-            return;
-        }
-        handValueType = HAND_VALUE_TYPE::HIGH_CARD;
-    }
-    
-    int Compare(const HandValue& other)
-    {
-        if (handValueType > other.handValueType)
-        {
-            return 1;
-        }
-        else if (handValueType < other.handValueType)
-        {
-            return -1;
-        }
-        if (rank > other.rank)
-        {
-            return 1;
-        }
-        else if (rank < other.rank)
-        {
-            return -1;
-        }
-        if (secondaryRank > other.secondaryRank)
-        {
-            return 1;
-        }
-        else if (secondaryRank < other.secondaryRank)
-        {
-            return -1;
-        }
-        if (kickerValue > other.kickerValue)
-        {
-            return 1;
-        }
-        else if (kickerValue < other.kickerValue)
-        {
-            return -1;
-        }
-        return 0;
-    }
-};
-
 // 0 is draw.  1 means player 0 wins.  -1 means player 1 wins
 // community cards are in slots 0,1,2.  player cards are in 3,4 and 5,6
 int CheckShowdown(int deck[])
 {
-    int playerHand0[5];
-    int playerHand1[5];
-    playerHand0[0] = deck[0];
-    playerHand0[1] = deck[1];
-    playerHand0[2] = deck[2];
-    playerHand0[3] = deck[3];
-    playerHand0[4] = deck[4];
-    playerHand1[0] = deck[0];
-    playerHand1[1] = deck[1];
-    playerHand1[2] = deck[2];
-    playerHand1[3] = deck[5];
-    playerHand1[4] = deck[6];
+    Hand playerHand0 = Hand::empty();
+    Hand playerHand1 = Hand::empty();
+    playerHand0 +=
+        Hand(deck[0]) +
+        Hand(deck[1]) +
+        Hand(deck[2]) +
+        Hand(deck[3]) +
+        Hand(deck[4]) +
+        Hand(deck[7]) +
+        Hand(deck[8]);
+    playerHand1 +=
+        Hand(deck[0]) +
+        Hand(deck[1]) +
+        Hand(deck[2]) +
+        Hand(deck[5]) +
+        Hand(deck[6]) +
+        Hand(deck[7]) +
+        Hand(deck[8]);
     
-    HandValue handValue0(playerHand0);
-    HandValue handValue1(playerHand1);
+    uint16_t handValue0 = handEvaluator.evaluate(playerHand0);
+    uint16_t handValue1 = handEvaluator.evaluate(playerHand1);
     
-    return handValue0.Compare(handValue1);
+    return (handValue0 > handValue1) ? 1 : ((handValue0 < handValue1) ? -1 : 0);
 }
 
 void ReplaceSuits(int &flop0Suit, int &flop1Suit, int &flop2Suit, int &hand0Suit, int &hand1Suit, int suitToReplace, int newSuit)
@@ -725,10 +311,10 @@ string ConstructInfoSet(int flop0, int flop1, int flop2, int hand0, int hand1, s
         swap(flop1Rank, flop2Rank);
         swap(flop1Suit, flop2Suit);
     }
-    if (flop2Rank > flop0Rank)
+    if (flop1Rank > flop0Rank)
     {
-        swap(flop0Rank, flop2Rank);
-        swap(flop0Suit, flop2Suit);
+        swap(flop0Rank, flop1Rank);
+        swap(flop0Suit, flop1Suit);
     }
 
     if (flop0Rank == flop1Rank && flop0Rank == flop2Rank)
@@ -941,16 +527,13 @@ bool CheckForStraightDraws(int deck[])
 
 ACTIONS GetDealerFixedStrategyActionFirstToAct(int deck[])
 {
-    int hand[5];
-    hand[0] = deck[0];
-    hand[1] = deck[1];
-    hand[2] = deck[2];
-    hand[3] = deck[3];
-    hand[4] = deck[4];
-    HandValue handValue(hand);
+    Hand hand = Hand::empty();
+    hand += Hand(deck[0]) + Hand(deck[1]) + Hand(deck[2]) + Hand(deck[3]) + Hand(deck[4]);
+
+    uint16_t handValue = handEvaluator.evaluate(hand);
     
     // any straight or higher
-    if (handValue.handValueType >= HAND_VALUE_TYPE::STRAIGHT)
+    if (handValue >= STRAIGHT)
     {
         return ACTIONS::BET;
     }
@@ -1190,6 +773,11 @@ public:
         {
             sortedNodes.insert({key, node});
         }
+        
+        string infoSet = sortedNodes.begin()->first;
+        string flop = infoSet.substr(0, 6);
+        std::cout << "flop: \n" << flop << "\n\n";
+
         for (const auto & [ key, node ] : sortedNodes)
         {
             if (FILTER_PRINT)
@@ -1237,13 +825,6 @@ public:
 
 int main(int argc, const char * argv[]) {
     srand((unsigned int)time(0));
-
-
-    HandEvaluator eval;
-    Hand h = Hand::empty(); // Final hand must include empty() exactly once!
-    h += Hand(51) + Hand(48) + Hand(0) + Hand(1) + Hand(2); // AdAs2s2h2c
-    std::cout << eval.evaluate(h) << std::endl; // 28684 = 7 * 4096 + 12
-    
     
     Solver solver;
     solver.Solve();

@@ -36,9 +36,13 @@ enum class SUITS
     HEARTS,
     SPADES,
     NUM,
+    X = 10,
+    Y,
+    Z,
+    W,
 };
 
-const int NUM_ITERATIONS = 10;
+const int NUM_ITERATIONS = 1000000;
 const int NUM_CARDS = (int)RANKS::NUM * (int)SUITS::NUM;
 const int BET_AMOUNT = 2;
 const bool HARD_CODE_FLOP = true;
@@ -312,12 +316,9 @@ void SortHand(int _playerHand[])
     }
 }
 
-string CardToString(int card)
+string RankToString(int rank)
 {
-    int rank = card / (int)SUITS::NUM;
     RANKS rankEnum = (RANKS)rank;
-    int suit = card % (int)SUITS::NUM;
-    SUITS suitEnum = (SUITS)suit;
     string c = to_string(rank + 2);
     switch(rankEnum)
     {
@@ -339,6 +340,12 @@ string CardToString(int card)
         default:
             break;
     }
+    return c;
+}
+
+string SuitToString(int suit)
+{
+    SUITS suitEnum = (SUITS)suit;
     string s;
     switch(suitEnum)
     {
@@ -354,9 +361,37 @@ string CardToString(int card)
         case SUITS::SPADES:
             s = "s";
             break;
+        case SUITS::X:
+            s = "x";
+            break;
+        case SUITS::Y:
+            s = "y";
+            break;
+        case SUITS::Z:
+            s = "z";
+            break;
+        case SUITS::W:
+            s = "w";
+            break;
         default:
             break;
     }
+    return s;
+}
+
+string CardToString(int card)
+{
+    int rank = card / (int)SUITS::NUM;
+    int suit = card % (int)SUITS::NUM;
+    string c = RankToString(rank);
+    string s = SuitToString(suit);
+    return c + s;
+}
+
+string CardToString(int rank, int suit)
+{
+    string c = RankToString(rank);
+    string s = SuitToString(suit);
     return c + s;
 }
 
@@ -623,6 +658,164 @@ int CheckShowdown(int deck[])
     return handValue0.Compare(handValue1);
 }
 
+void ReplaceSuits(int &flop0Suit, int &flop1Suit, int &flop2Suit, int &hand0Suit, int &hand1Suit, int suitToReplace, int newSuit)
+{
+    if (flop0Suit == suitToReplace) flop0Suit = newSuit;
+    if (flop1Suit == suitToReplace) flop1Suit = newSuit;
+    if (flop2Suit == suitToReplace) flop2Suit = newSuit;
+    if (hand0Suit == suitToReplace) hand0Suit = newSuit;
+    if (hand1Suit == suitToReplace) hand1Suit = newSuit;
+}
+
+
+string ConstructInfoSet(int flop0, int flop1, int flop2, int hand0, int hand1, string history)
+{
+    int flop0Rank = flop0 / (int)SUITS::NUM;
+    int flop0Suit = flop0 % (int)SUITS::NUM;
+    int flop1Rank = flop1 / (int)SUITS::NUM;
+    int flop1Suit = flop1 % (int)SUITS::NUM;
+    int flop2Rank = flop2 / (int)SUITS::NUM;
+    int flop2Suit = flop2 % (int)SUITS::NUM;
+    int hand0Rank = hand0 / (int)SUITS::NUM;
+    int hand0Suit = hand0 % (int)SUITS::NUM;
+    int hand1Rank = hand1 / (int)SUITS::NUM;
+    int hand1Suit = hand1 % (int)SUITS::NUM;
+
+    if (hand1Rank > hand0Rank)
+    {
+        swap(hand0Rank, hand1Rank);
+        swap(hand0Suit, hand1Suit);
+    }
+    if (flop1Rank > flop0Rank)
+    {
+        swap(flop0Rank, flop1Rank);
+        swap(flop0Suit, flop1Suit);
+    }
+    if (flop2Rank > flop1Rank)
+    {
+        swap(flop1Rank, flop2Rank);
+        swap(flop1Suit, flop2Suit);
+    }
+    if (flop2Rank > flop0Rank)
+    {
+        swap(flop0Rank, flop2Rank);
+        swap(flop0Suit, flop2Suit);
+    }
+
+    if (flop0Rank == flop1Rank && flop0Rank == flop2Rank)
+    {
+        if (hand0Rank == hand1Rank && hand0Suit != flop0Suit && hand0Suit != flop1Suit && hand0Suit != flop2Suit)
+        {
+            swap(hand0Rank, hand1Rank);
+            swap(hand0Suit, hand1Suit);
+        }
+        if (flop1Suit == hand0Suit)
+        {
+            swap(flop0Rank, flop1Rank);
+            swap(flop0Suit, flop1Suit);
+        }
+        else if (flop2Suit == hand0Suit)
+        {
+            swap(flop0Rank, flop2Rank);
+            swap(flop0Suit, flop2Suit);
+        }
+        if (flop0Suit != hand0Suit)
+        {
+            if (flop1Suit == hand1Suit)
+            {
+                swap(flop0Rank, flop1Rank);
+                swap(flop0Suit, flop1Suit);
+            }
+            else if (flop2Suit == hand1Suit)
+            {
+                swap(flop0Rank, flop2Rank);
+                swap(flop0Suit, flop2Suit);
+            }
+        }
+        else if (flop2Suit == hand1Suit)
+        {
+            swap(flop1Rank, flop2Rank);
+            swap(flop1Suit, flop2Suit);
+        }
+    }
+    else if (flop0Rank == flop1Rank)
+    {
+        if (flop1Suit == flop2Suit)
+        {
+            swap(flop0Rank, flop1Rank);
+            swap(flop0Suit, flop1Suit);
+        }
+        if (flop0Suit != flop2Suit)
+        {
+            if (flop1Suit == hand0Suit)
+            {
+                swap(flop0Rank, flop1Rank);
+                swap(flop0Suit, flop1Suit);
+            }
+            if (flop0Suit != hand0Suit && flop1Suit == hand1Suit)
+            {
+                swap(flop0Rank, flop1Rank);
+                swap(flop0Suit, flop1Suit);
+            }
+        }
+    }
+    else if (flop2Rank == flop1Rank)
+    {
+        if (flop2Suit == flop0Suit)
+        {
+            swap(flop1Rank, flop2Rank);
+            swap(flop1Suit, flop2Suit);
+        }
+        if (flop2Suit != flop0Suit)
+        {
+            if (flop2Suit == hand0Suit)
+            {
+                swap(flop1Rank, flop2Rank);
+                swap(flop1Suit, flop2Suit);
+            }
+            if (flop1Suit != hand0Suit && flop2Suit == hand1Suit)
+            {
+                swap(flop1Rank, flop2Rank);
+                swap(flop1Suit, flop2Suit);
+            }
+        }
+    }
+
+    // Now the suits are all in priority order.  We can change them to x,y,z,w now
+    
+    int nextNewSuit = (int)SUITS::X;
+
+    ReplaceSuits(flop0Suit, flop1Suit, flop2Suit, hand0Suit, hand1Suit, flop0Suit, nextNewSuit);
+    if (flop1Suit < (int)SUITS::NUM)
+    {
+        nextNewSuit++;
+        ReplaceSuits(flop0Suit, flop1Suit, flop2Suit, hand0Suit, hand1Suit, flop1Suit, nextNewSuit);
+    }
+    if (flop2Suit < (int)SUITS::NUM)
+    {
+        nextNewSuit++;
+        ReplaceSuits(flop0Suit, flop1Suit, flop2Suit, hand0Suit, hand1Suit, flop2Suit, nextNewSuit);
+    }
+    if (hand0Suit < (int)SUITS::NUM)
+    {
+        nextNewSuit++;
+        ReplaceSuits(flop0Suit, flop1Suit, flop2Suit, hand0Suit, hand1Suit, hand0Suit, nextNewSuit);
+    }
+    if (hand1Suit < (int)SUITS::NUM)
+    {
+        nextNewSuit++;
+        ReplaceSuits(flop0Suit, flop1Suit, flop2Suit, hand0Suit, hand1Suit, hand1Suit, nextNewSuit);
+    }
+
+    return
+        CardToString(flop0Rank, flop0Suit) +
+        CardToString(flop1Rank, flop1Suit) +
+        CardToString(flop2Rank, flop2Suit) +
+        CardToString(hand0Rank, hand0Suit) +
+        CardToString(hand1Rank, hand1Suit) +
+        history;
+}
+
 class Solver
 {
     unordered_map<string, Node> nodes;
@@ -653,13 +846,10 @@ public:
         }
         
         // add this decision-point node to the map
-        string infoSet =
-            CardToString(deck[0]) +
-            CardToString(deck[1]) +
-            CardToString(deck[2]) +
-            CardToString(deck[3 + player * 2]) +
-            CardToString(deck[4 + player * 2]) +
-            history;
+        
+        string infoSet = ConstructInfoSet(deck[0], deck[1], deck[2], deck[3 + player * 2], deck[4 + player * 2], history);
+        
+        // make a better infoset.  all aces should be AxAyAz.  player hands should be sorted and suits x,y,z,w
         Node *nodePointer;
 
         auto iter = nodes.find(infoSet);

@@ -43,16 +43,22 @@ enum class SUITS
 };
 
 //todo: I see both 3xy and 3yx in the infosets
+//todo: turn and river!!!
 
-const int NUM_ITERATIONS = 10000000;
+const int NUM_ITERATIONS = 1000000;
 const int BET_AMOUNT = 2;
+const double BET_RAKE_ON_PLAYER_WIN = 0.0;
 const bool HARD_CODE_FLOP = true;
-const int HARD_CODE_FLOP0 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::CLUBS;
-const int HARD_CODE_FLOP1 = (int)RANKS::EIGHT * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
-const int HARD_CODE_FLOP2 = (int)RANKS::TWO * (int)SUITS::NUM + (int)SUITS::HEARTS;
+
+// lots of draws
+const int HARD_CODE_FLOP0 = (int)RANKS::FIVE * (int)SUITS::NUM + (int)SUITS::CLUBS;
+const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::CLUBS;
+const int HARD_CODE_FLOP2 = (int)RANKS::K * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+
 const bool DEALER_USES_FIXED_STRATEGY = true;
-const bool PRINT_SOME = true;
-const string HISTORY_TO_PRINT = "b";
+const bool PRINT_IT = true;
+const bool FILTER_PRINT = true;
+const string HISTORY_TO_PRINT = "p";
 
 const int NUM_CARDS = (int)RANKS::NUM * (int)SUITS::NUM;
 
@@ -671,7 +677,7 @@ int CheckShowdown(int deck[])
     playerHand1[2] = deck[2];
     playerHand1[3] = deck[5];
     playerHand1[4] = deck[6];
-
+    
     HandValue handValue0(playerHand0);
     HandValue handValue1(playerHand1);
     
@@ -1080,6 +1086,10 @@ public:
             }
             else if (history == "bb" || history == "pbb")
             {
+                if (player0Winnings == -1)
+                {
+                    return -(BET_AMOUNT + 1) + BET_RAKE_ON_PLAYER_WIN;
+                }
                 return player0Winnings * (BET_AMOUNT + 1);
             }
         }
@@ -1179,7 +1189,7 @@ public:
         }
         for (const auto & [ key, node ] : sortedNodes)
         {
-            if (PRINT_SOME)
+            if (FILTER_PRINT)
             {
                 node.PrintSome();
             }
@@ -1199,6 +1209,7 @@ public:
             // clear out strategy halfway through for efficiency.  cfr+ has a better weighted sum
             if (iteration == NUM_ITERATIONS/2)
             {
+                ev = 0;
                 for (auto & [ key, node ] : nodes)
                 {
                     for (int i = 0; i < (int)ACTIONS::NUM; i++)
@@ -1211,10 +1222,13 @@ public:
             ShuffleDeck(deck);
             ev += CFR(deck, "", 1, 1);
         }
-        ev /= NUM_ITERATIONS;
+        ev /= (NUM_ITERATIONS/2);
 
         std::cout << "Total ev: " << ev << "\n";
-        Print();
+        if (PRINT_IT)
+        {
+            Print();
+        }
     }
 };
 

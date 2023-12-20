@@ -42,13 +42,18 @@ enum class SUITS
     W,
 };
 
-const int NUM_ITERATIONS = 1000000;
+const int NUM_ITERATIONS = 10000000;
 const int NUM_CARDS = (int)RANKS::NUM * (int)SUITS::NUM;
 const int BET_AMOUNT = 2;
 const bool HARD_CODE_FLOP = true;
+const bool HARD_CODE_HAND = false;
 const int HARD_CODE_FLOP0 = 48;
 const int HARD_CODE_FLOP1 = 49;
 const int HARD_CODE_FLOP2 = 50;
+const int HARD_CODE_HAND0 = 51;
+const int HARD_CODE_HAND1 = 20;
+
+const string HISTORY_TO_PRINT = "";
 
 class Node
 {
@@ -130,8 +135,22 @@ public:
         GetAverageStrategy(strategy);
         std::cout << infoSet << " Pass: " <<
             std::round(strategy[(int)ACTIONS::PASS] * 1000.0) / 1000.0 << " Bet: " <<
-            std::round(strategy[(int)ACTIONS::BET] * 1000.0) / 1000.0 << " Bet: " <<
+            std::round(strategy[(int)ACTIONS::BET] * 1000.0) / 1000.0 <<
             "\n";
+    }
+    
+    void PrintSome() const
+    {
+        string flop = infoSet.substr(0, 6);
+        string hand = infoSet.substr(6, 4);
+        string history = infoSet.substr(10);
+        
+        if (history == HISTORY_TO_PRINT)
+        {
+            double strategy[(int)ACTIONS::NUM];
+            GetAverageStrategy(strategy);
+            std::cout << hand << " " << std::round(strategy[(int)ACTIONS::BET] * 1000.0) / 1000.0 << "\n";
+        }
     }
 };
 
@@ -899,24 +918,25 @@ public:
         {
             deck[i] = i;
         }
+        int cardsToReserve = 0;
         if (HARD_CODE_FLOP)
         {
             swap(deck[HARD_CODE_FLOP0], deck[0]);
             swap(deck[HARD_CODE_FLOP1], deck[1]);
             swap(deck[HARD_CODE_FLOP2], deck[2]);
-            for (int c1 = NUM_CARDS - 1; c1 > 3; c1--)
+            cardsToReserve += 3;
+
+            if (HARD_CODE_HAND)
             {
-                int c2 = rand() % (c1 - 2) + 3;
-                swap(deck[c1], deck[c2]);
+                swap(deck[HARD_CODE_HAND0], deck[3]);
+                swap(deck[HARD_CODE_HAND1], deck[4]);
+                cardsToReserve += 2;
             }
         }
-        else
+        for (int c1 = NUM_CARDS - 1; c1 > cardsToReserve; c1--)
         {
-            for (int c1 = NUM_CARDS - 1; c1 > 0; c1--)
-            {
-                int c2 = rand() % (c1 + 1);
-                swap(deck[c1], deck[c2]);
-            }
+            int c2 = rand() % (c1 + 1 - cardsToReserve) + cardsToReserve;
+            swap(deck[c1], deck[c2]);
         }
     }
     
@@ -929,7 +949,8 @@ public:
         }
         for (const auto & [ key, node ] : sortedNodes)
         {
-            node.Print();
+//            node.Print();
+            node.PrintSome();
         }
     }
     

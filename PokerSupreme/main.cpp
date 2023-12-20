@@ -2,7 +2,10 @@
 #include <unordered_map>
 #include <map>
 
+#include "../OMPEval/omp/HandEvaluator.h"
+
 using namespace std;
+using namespace omp;
 
 enum class ACTIONS
 {
@@ -1234,6 +1237,13 @@ public:
 
 int main(int argc, const char * argv[]) {
     srand((unsigned int)time(0));
+
+
+    HandEvaluator eval;
+    Hand h = Hand::empty(); // Final hand must include empty() exactly once!
+    h += Hand(51) + Hand(48) + Hand(0) + Hand(1) + Hand(2); // AdAs2s2h2c
+    std::cout << eval.evaluate(h) << std::endl; // 28684 = 7 * 4096 + 12
+    
     
     Solver solver;
     solver.Solve();

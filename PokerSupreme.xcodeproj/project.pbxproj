@@ -8,6 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		7C355A962B320D0B006FDD4B /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7C355A952B320D0B006FDD4B /* main.cpp */; };
+		7C355AA12B335255006FDD4B /* HandEvaluator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7C355AA02B335255006FDD4B /* HandEvaluator.cpp */; };
+		7C355AA52B335267006FDD4B /* EquityCalculator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7C355AA22B335267006FDD4B /* EquityCalculator.cpp */; };
+		7C355AA62B335267006FDD4B /* CardRange.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7C355AA32B335267006FDD4B /* CardRange.cpp */; };
+		7C355AA72B335267006FDD4B /* CombinedRange.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7C355AA42B335267006FDD4B /* CombinedRange.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +29,19 @@
 /* Begin PBXFileReference section */
 		7C355A922B320D0B006FDD4B /* PokerSupreme */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = PokerSupreme; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C355A952B320D0B006FDD4B /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		7C355AA02B335255006FDD4B /* HandEvaluator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = HandEvaluator.cpp; path = OMPEval/omp/HandEvaluator.cpp; sourceTree = "<group>"; };
+		7C355AA22B335267006FDD4B /* EquityCalculator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = EquityCalculator.cpp; path = OMPEval/omp/EquityCalculator.cpp; sourceTree = "<group>"; };
+		7C355AA32B335267006FDD4B /* CardRange.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CardRange.cpp; path = OMPEval/omp/CardRange.cpp; sourceTree = "<group>"; };
+		7C355AA42B335267006FDD4B /* CombinedRange.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CombinedRange.cpp; path = OMPEval/omp/CombinedRange.cpp; sourceTree = "<group>"; };
+		7C355AA82B33527A006FDD4B /* CombinedRange.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CombinedRange.h; path = OMPEval/omp/CombinedRange.h; sourceTree = "<group>"; };
+		7C355AA92B33527A006FDD4B /* CardRange.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CardRange.h; path = OMPEval/omp/CardRange.h; sourceTree = "<group>"; };
+		7C355AAA2B33527A006FDD4B /* Util.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Util.h; path = OMPEval/omp/Util.h; sourceTree = "<group>"; };
+		7C355AAB2B33527A006FDD4B /* EquityCalculator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = EquityCalculator.h; path = OMPEval/omp/EquityCalculator.h; sourceTree = "<group>"; };
+		7C355AAC2B33527A006FDD4B /* HandEvaluator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HandEvaluator.h; path = OMPEval/omp/HandEvaluator.h; sourceTree = "<group>"; };
+		7C355AAD2B33527A006FDD4B /* Hand.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Hand.h; path = OMPEval/omp/Hand.h; sourceTree = "<group>"; };
+		7C355AAE2B33527A006FDD4B /* OffsetTable.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = OffsetTable.hxx; path = OMPEval/omp/OffsetTable.hxx; sourceTree = "<group>"; };
+		7C355AAF2B33527A006FDD4B /* Random.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Random.h; path = OMPEval/omp/Random.h; sourceTree = "<group>"; };
+		7C355AB02B33527A006FDD4B /* Constants.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Constants.h; path = OMPEval/omp/Constants.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -41,6 +58,19 @@
 		7C355A892B320D0B006FDD4B = {
 			isa = PBXGroup;
 			children = (
+				7C355AA92B33527A006FDD4B /* CardRange.h */,
+				7C355AA82B33527A006FDD4B /* CombinedRange.h */,
+				7C355AB02B33527A006FDD4B /* Constants.h */,
+				7C355AAB2B33527A006FDD4B /* EquityCalculator.h */,
+				7C355AAD2B33527A006FDD4B /* Hand.h */,
+				7C355AAC2B33527A006FDD4B /* HandEvaluator.h */,
+				7C355AAE2B33527A006FDD4B /* OffsetTable.hxx */,
+				7C355AAF2B33527A006FDD4B /* Random.h */,
+				7C355AAA2B33527A006FDD4B /* Util.h */,
+				7C355AA02B335255006FDD4B /* HandEvaluator.cpp */,
+				7C355AA32B335267006FDD4B /* CardRange.cpp */,
+				7C355AA42B335267006FDD4B /* CombinedRange.cpp */,
+				7C355AA22B335267006FDD4B /* EquityCalculator.cpp */,
 				7C355A942B320D0B006FDD4B /* PokerSupreme */,
 				7C355A932B320D0B006FDD4B /* Products */,
 			);
@@ -119,6 +149,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7C355AA12B335255006FDD4B /* HandEvaluator.cpp in Sources */,
+				7C355AA72B335267006FDD4B /* CombinedRange.cpp in Sources */,
+				7C355AA62B335267006FDD4B /* CardRange.cpp in Sources */,
+				7C355AA52B335267006FDD4B /* EquityCalculator.cpp in Sources */,
 				7C355A962B320D0B006FDD4B /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

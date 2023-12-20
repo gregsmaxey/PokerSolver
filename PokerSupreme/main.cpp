@@ -4,19 +4,6 @@
 
 using namespace std;
 
-const int NUM_ITERATIONS = 1000000;
-const int BET_AMOUNT = 2;
-const bool HARD_CODE_FLOP = true;
-const bool HARD_CODE_HAND = false;
-const int HARD_CODE_FLOP0 = 48;
-const int HARD_CODE_FLOP1 = 49;
-const int HARD_CODE_FLOP2 = 50;
-const int HARD_CODE_HAND0 = 51;
-const int HARD_CODE_HAND1 = 20;
-const bool DEALER_USES_FIXED_STRATEGY = true;
-const bool PRINT_SOME = true;
-const string HISTORY_TO_PRINT = "p";
-
 enum class ACTIONS
 {
     PASS = 0,
@@ -54,6 +41,18 @@ enum class SUITS
     Z,
     W,
 };
+
+//todo: I see both 3xy and 3yx in the infosets
+
+const int NUM_ITERATIONS = 10000000;
+const int BET_AMOUNT = 2;
+const bool HARD_CODE_FLOP = true;
+const int HARD_CODE_FLOP0 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::CLUBS;
+const int HARD_CODE_FLOP1 = (int)RANKS::EIGHT * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+const int HARD_CODE_FLOP2 = (int)RANKS::TWO * (int)SUITS::NUM + (int)SUITS::HEARTS;
+const bool DEALER_USES_FIXED_STRATEGY = true;
+const bool PRINT_SOME = true;
+const string HISTORY_TO_PRINT = "b";
 
 const int NUM_CARDS = (int)RANKS::NUM * (int)SUITS::NUM;
 
@@ -1163,13 +1162,6 @@ public:
             swap(deck[HARD_CODE_FLOP1], deck[1]);
             swap(deck[HARD_CODE_FLOP2], deck[2]);
             cardsToReserve += 3;
-
-            if (HARD_CODE_HAND)
-            {
-                swap(deck[HARD_CODE_HAND0], deck[3]);
-                swap(deck[HARD_CODE_HAND1], deck[4]);
-                cardsToReserve += 2;
-            }
         }
         for (int c1 = NUM_CARDS - 1; c1 > cardsToReserve; c1--)
         {

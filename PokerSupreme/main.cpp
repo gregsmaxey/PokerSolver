@@ -53,6 +53,7 @@ const int HARD_CODE_FLOP2 = 50;
 const int HARD_CODE_HAND0 = 51;
 const int HARD_CODE_HAND1 = 20;
 
+const bool PRINT_SOME = true;
 const string HISTORY_TO_PRINT = "";
 
 class Node
@@ -494,9 +495,9 @@ public:
         int pairSecondaryRank = 0;
         
         int pairConfiguration =
-        (ranks[0] == ranks[1]) ||
-        (ranks[1] == ranks[2]) << 1 ||
-        (ranks[2] == ranks[3]) << 2 ||
+        (ranks[0] == ranks[1]) |
+        (ranks[1] == ranks[2]) << 1 |
+        (ranks[2] == ranks[3]) << 2 |
         (ranks[3] == ranks[4]) << 3;
         
         switch(pairConfiguration)
@@ -949,8 +950,14 @@ public:
         }
         for (const auto & [ key, node ] : sortedNodes)
         {
-//            node.Print();
-            node.PrintSome();
+            if (PRINT_SOME)
+            {
+                node.PrintSome();
+            }
+            else
+            {
+                node.Print();
+            }
         }
     }
     

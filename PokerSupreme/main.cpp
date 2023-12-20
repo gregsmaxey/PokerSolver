@@ -4,6 +4,19 @@
 
 using namespace std;
 
+const int NUM_ITERATIONS = 1000000;
+const int BET_AMOUNT = 2;
+const bool HARD_CODE_FLOP = true;
+const bool HARD_CODE_HAND = false;
+const int HARD_CODE_FLOP0 = 48;
+const int HARD_CODE_FLOP1 = 49;
+const int HARD_CODE_FLOP2 = 50;
+const int HARD_CODE_HAND0 = 51;
+const int HARD_CODE_HAND1 = 20;
+const bool DEALER_USES_FIXED_STRATEGY = true;
+const bool PRINT_SOME = true;
+const string HISTORY_TO_PRINT = "p";
+
 enum class ACTIONS
 {
     PASS = 0,
@@ -42,19 +55,7 @@ enum class SUITS
     W,
 };
 
-const int NUM_ITERATIONS = 10000000;
 const int NUM_CARDS = (int)RANKS::NUM * (int)SUITS::NUM;
-const int BET_AMOUNT = 2;
-const bool HARD_CODE_FLOP = true;
-const bool HARD_CODE_HAND = false;
-const int HARD_CODE_FLOP0 = 48;
-const int HARD_CODE_FLOP1 = 49;
-const int HARD_CODE_FLOP2 = 50;
-const int HARD_CODE_HAND0 = 51;
-const int HARD_CODE_HAND1 = 20;
-
-const bool PRINT_SOME = true;
-const string HISTORY_TO_PRINT = "";
 
 class Node
 {
@@ -836,6 +837,225 @@ string ConstructInfoSet(int flop0, int flop1, int flop2, int hand0, int hand1, s
         history;
 }
 
+bool CheckForBluffCatcher(int deck[])
+{
+    int flop0Rank = deck[0] / (int)SUITS::NUM;
+    int flop1Rank = deck[1] / (int)SUITS::NUM;
+    int flop2Rank = deck[2] / (int)SUITS::NUM;
+    int hand0Rank = deck[3] / (int)SUITS::NUM;
+    int hand1Rank = deck[4] / (int)SUITS::NUM;
+    
+    // check when having a high card of the highest or second highest rank
+    int highestRank = 12;
+    int secondHighestRank = 11;
+    while (highestRank == flop0Rank ||
+        highestRank == flop1Rank ||
+        highestRank == flop2Rank)
+    {
+        highestRank--;
+        secondHighestRank--;
+    }
+    while (secondHighestRank == flop0Rank ||
+           secondHighestRank == flop1Rank ||
+           secondHighestRank == flop2Rank)
+    {
+        secondHighestRank--;
+    }
+    
+    return (hand0Rank == highestRank ||
+            hand1Rank == highestRank ||
+            hand0Rank == secondHighestRank ||
+            hand1Rank == secondHighestRank);
+}
+
+bool CheckForStraightDraws(int deck[])
+{
+    int flop0Rank = deck[0] / (int)SUITS::NUM;
+    int flop1Rank = deck[1] / (int)SUITS::NUM;
+    int flop2Rank = deck[2] / (int)SUITS::NUM;
+    int hand0Rank = deck[3] / (int)SUITS::NUM;
+    int hand1Rank = deck[4] / (int)SUITS::NUM;
+    
+    bool rankExists[13];
+    for (int i = 0; i < 13; i++)
+    {
+        rankExists[i] = false;
+    }
+
+    rankExists[flop0Rank] = true;
+    rankExists[flop1Rank] = true;
+    rankExists[flop2Rank] = true;
+    rankExists[hand0Rank] = true;
+    rankExists[hand1Rank] = true;
+
+    for (int i = 0; i < 9; i++)
+    {
+        if (rankExists[i])
+        {
+            int existingRanksForStraightStartingHere = 1;
+            if (rankExists[i+1]) existingRanksForStraightStartingHere++;
+            if (rankExists[i+2]) existingRanksForStraightStartingHere++;
+            if (rankExists[i+3]) existingRanksForStraightStartingHere++;
+            if (rankExists[i+4]) existingRanksForStraightStartingHere++;
+            if (existingRanksForStraightStartingHere == 4)
+            {
+                // make sure both hold cards contribute
+                if (hand0Rank >= i && hand0Rank <= i + 4 &&
+                  hand1Rank >= i && hand1Rank <= i + 4)
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    
+    // check for wheel
+    if (rankExists[(int)RANKS::A])
+    {
+        int existingRanksForStraightStartingHere = 1;
+        if (rankExists[0]) existingRanksForStraightStartingHere++;
+        if (rankExists[1]) existingRanksForStraightStartingHere++;
+        if (rankExists[2]) existingRanksForStraightStartingHere++;
+        if (rankExists[3]) existingRanksForStraightStartingHere++;
+        if (existingRanksForStraightStartingHere == 4)
+        {
+            // make sure both hold cards contribute
+            if ((hand0Rank == (int)RANKS::A || (hand0Rank >= 0 && hand0Rank <= 3)) &&
+                (hand1Rank == (int)RANKS::A || (hand1Rank >= 0 && hand1Rank <= 3)))
+            {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+ACTIONS GetDealerFixedStrategyActionFirstToAct(int deck[])
+{
+    int hand[5];
+    hand[0] = deck[0];
+    hand[1] = deck[1];
+    hand[2] = deck[2];
+    hand[3] = deck[3];
+    hand[4] = deck[4];
+    HandValue handValue(hand);
+    
+    // any straight or higher
+    if (handValue.handValueType >= HAND_VALUE_TYPE::STRAIGHT)
+    {
+        return ACTIONS::BET;
+    }
+
+    int flop0Rank = deck[0] / (int)SUITS::NUM;
+    int flop0Suit = deck[0] % (int)SUITS::NUM;
+    int flop1Rank = deck[1] / (int)SUITS::NUM;
+    int flop1Suit = deck[1] % (int)SUITS::NUM;
+    int flop2Rank = deck[2] / (int)SUITS::NUM;
+    int flop2Suit = deck[2] % (int)SUITS::NUM;
+    int hand0Rank = deck[3] / (int)SUITS::NUM;
+    int hand0Suit = deck[3] % (int)SUITS::NUM;
+    int hand1Rank = deck[4] / (int)SUITS::NUM;
+    int hand1Suit = deck[4] % (int)SUITS::NUM;
+
+    // any pocket pair
+    if (hand0Rank == hand1Rank)
+    {
+        return ACTIONS::BET;
+    }
+    
+    // any pocket card matching the board
+    if (hand0Rank == flop0Rank ||
+        hand0Rank == flop1Rank ||
+        hand0Rank == flop2Rank ||
+        hand1Rank == flop0Rank ||
+        hand1Rank == flop1Rank ||
+        hand1Rank == flop2Rank)
+    {
+        return ACTIONS::BET;
+    }
+    
+    if (CheckForBluffCatcher(deck))
+    {
+        return ACTIONS::PASS;
+    }
+
+    // if both pocket cards are the same suit, if they match any suit on the board (flush draw)
+    if (hand0Suit == hand1Suit &&
+        (hand0Suit == flop0Suit ||
+         hand0Suit == flop1Suit ||
+         hand0Suit == flop2Suit))
+    {
+        return ACTIONS::BET;
+    }
+
+    // any gutshot or better straight draws that both hole cards contribute to
+    if (CheckForStraightDraws(deck))
+    {
+        return ACTIONS::BET;
+    }
+    
+    int lowestRank0 = 0;
+    int lowestRank1 = 1;
+    int lowestRank2 = 2;
+    int lowestRank3 = 3;
+    while (lowestRank0 == flop0Rank ||
+           lowestRank0 == flop1Rank ||
+           lowestRank0 == flop2Rank)
+    {
+        lowestRank0++;
+        lowestRank1++;
+        lowestRank2++;
+        lowestRank3++;
+    }
+    while (lowestRank1 == flop0Rank ||
+           lowestRank1 == flop1Rank ||
+           lowestRank1 == flop2Rank)
+    {
+        lowestRank1++;
+        lowestRank2++;
+        lowestRank3++;
+    }
+    while (lowestRank2 == flop0Rank ||
+           lowestRank2 == flop1Rank ||
+           lowestRank2 == flop2Rank)
+    {
+        lowestRank2++;
+        lowestRank3++;
+    }
+    while (lowestRank3 == flop0Rank ||
+           lowestRank3 == flop1Rank ||
+           lowestRank3 == flop2Rank)
+    {
+        lowestRank3++;
+    }
+
+    // any two low cards
+    if ((hand0Rank == lowestRank0 ||
+        hand0Rank == lowestRank1 ||
+        hand0Rank == lowestRank2 ||
+        hand0Rank == lowestRank3) &&
+        (hand1Rank == lowestRank0 ||
+         hand1Rank == lowestRank1 ||
+         hand1Rank == lowestRank2 ||
+         hand1Rank == lowestRank3))
+    {
+        return ACTIONS::BET;
+    }
+
+    return ACTIONS::PASS;
+}
+
+ACTIONS GetDealerFixedStrategyActionWhenBetTo(int deck[])
+{
+    if (CheckForBluffCatcher(deck))
+    {
+        return ACTIONS::BET;
+    }
+    // maybe I could run this one without fixed strategy to see what's best
+    return ACTIONS::PASS;
+}
+
 class Solver
 {
     unordered_map<string, Node> nodes;
@@ -865,52 +1085,69 @@ public:
             }
         }
         
-        // add this decision-point node to the map
-        
-        string infoSet = ConstructInfoSet(deck[0], deck[1], deck[2], deck[3 + player * 2], deck[4 + player * 2], history);
-        
-        // make a better infoset.  all aces should be AxAyAz.  player hands should be sorted and suits x,y,z,w
-        Node *nodePointer;
-
-        auto iter = nodes.find(infoSet);
-        if (iter == nodes.end())
+        if (DEALER_USES_FIXED_STRATEGY && player == 0)
         {
-            auto inserted = nodes.insert({infoSet, Node(infoSet)});
-            nodePointer = &(inserted.first->second);
+            ACTIONS action;
+            if (plays == 0)
+            {
+                action = GetDealerFixedStrategyActionFirstToAct(deck);
+            }
+            else
+            {
+                action = GetDealerFixedStrategyActionWhenBetTo(deck);
+            }
+            string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
+            double ev = - CFR(deck, nextHistory, probability0, probability1);
+            return ev;
         }
         else
         {
-            nodePointer = &(iter->second);
-        }
-
-        double strategy[(int)ACTIONS::NUM];
-        nodePointer->GetStrategy(strategy);
-        nodePointer->UpdateStrategySums(strategy, player == 0 ? probability0 : probability1);
-
-        // traverse to the next nodes and calculate ev
-        double ev[(int)ACTIONS::NUM];
-        double nodeEV = 0;
-        for (int a = 0; a < (int)ACTIONS::NUM; a++)
-        {
-            string nextHistory = history + (a == (int)ACTIONS::PASS ? "p" : "b");
-            double nextNodeProbability0 = (player == 0) ? probability0 * strategy[a] : probability0;
-            double nextNodeProbability1 = (player == 1) ? probability1 * strategy[a] : probability1;
-            // ev is inverted here because the next node's ev is from the perspective of the opponent
-            ev[a] = - CFR(deck, nextHistory, nextNodeProbability0, nextNodeProbability1);
-            nodeEV += strategy[a] * ev[a];
-        }
-        
-        double probabilityWeGetHere = player == 0 ? probability1 : probability0;
-        for (int a = 0; a < (int)ACTIONS::NUM; a++)
-        {
-            double regret = ev[a] - nodeEV;
-            nodePointer->regretSums[a] += probabilityWeGetHere * regret;
+            // add this decision-point node to the map
             
-            //cfr+
-            nodePointer->regretSums[a] = max(0.0, nodePointer->regretSums[a]);
+            string infoSet = ConstructInfoSet(deck[0], deck[1], deck[2], deck[3 + player * 2], deck[4 + player * 2], history);
+            
+            // make a better infoset.  all aces should be AxAyAz.  player hands should be sorted and suits x,y,z,w
+            Node *nodePointer;
+            
+            auto iter = nodes.find(infoSet);
+            if (iter == nodes.end())
+            {
+                auto inserted = nodes.insert({infoSet, Node(infoSet)});
+                nodePointer = &(inserted.first->second);
+            }
+            else
+            {
+                nodePointer = &(iter->second);
+            }
+            
+            double strategy[(int)ACTIONS::NUM];
+            nodePointer->GetStrategy(strategy);
+            nodePointer->UpdateStrategySums(strategy, player == 0 ? probability0 : probability1);
+            
+            // traverse to the next nodes and calculate ev
+            double ev[(int)ACTIONS::NUM];
+            double nodeEV = 0;
+            for (int a = 0; a < (int)ACTIONS::NUM; a++)
+            {
+                string nextHistory = history + (a == (int)ACTIONS::PASS ? "p" : "b");
+                double nextNodeProbability0 = (player == 0) ? probability0 * strategy[a] : probability0;
+                double nextNodeProbability1 = (player == 1) ? probability1 * strategy[a] : probability1;
+                // ev is inverted here because the next node's ev is from the perspective of the opponent
+                ev[a] = - CFR(deck, nextHistory, nextNodeProbability0, nextNodeProbability1);
+                nodeEV += strategy[a] * ev[a];
+            }
+            
+            double probabilityWeGetHere = player == 0 ? probability1 : probability0;
+            for (int a = 0; a < (int)ACTIONS::NUM; a++)
+            {
+                double regret = ev[a] - nodeEV;
+                nodePointer->regretSums[a] += probabilityWeGetHere * regret;
+                
+                //cfr+   this helps it resolve faster
+                nodePointer->regretSums[a] = max(0.0, nodePointer->regretSums[a]);
+            }
+            return nodeEV;
         }
-
-        return nodeEV;
     }
     
     void ShuffleDeck(int deck[])

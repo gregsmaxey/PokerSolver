@@ -45,16 +45,38 @@ enum class SUITS
     W,
 };
 
-//todo: I see both 3xy and 3yx in the infosets
+enum class STRATEGY_ACTIONS
+{
+    OOP_BET = 0,
+    OOP_CHECK_CALL,
+    OOP_CHECK_FOLD,
+    IP_CALL,
+    IP_FOLD,
+    IP_BET,
+    IP_CHECK_BACK,
+    NOT_A_ROOT_NODE,
+    NUM
+};
 
-const int NUM_ITERATIONS = 1000000;
+const vector<string> strategyActionStrings = {
+    "OOP_BET",
+    "OOP_CHECK_CALL",
+    "OOP_CHECK_FOLD",
+    "IP_CALL",
+    "IP_FOLD",
+    "IP_BET",
+    "IP_CHECK_BACK",
+    "NOT_A_ROOT_NODE",
+};
+
+const int NUM_ITERATIONS = 10000000;
 const int BET_AMOUNT = 2;
-const double BET_RAKE_ON_PLAYER_WIN = 0.5;
+const double BET_RAKE_ON_PLAYER_WIN = 0.0;
 const bool HARD_CODE_FLOP = true;
 
-const int HARD_CODE_FLOP0 = (int)RANKS::FOUR * (int)SUITS::NUM + (int)SUITS::CLUBS;
-const int HARD_CODE_FLOP1 = (int)RANKS::FIVE * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
-const int HARD_CODE_FLOP2 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::HEARTS;
+//const int HARD_CODE_FLOP0 = (int)RANKS::FOUR * (int)SUITS::NUM + (int)SUITS::CLUBS;
+//const int HARD_CODE_FLOP1 = (int)RANKS::FIVE * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+//const int HARD_CODE_FLOP2 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::HEARTS;
 
 // typical flop
 //const int HARD_CODE_FLOP0 = (int)RANKS::FIVE * (int)SUITS::NUM + (int)SUITS::CLUBS;
@@ -67,9 +89,9 @@ const int HARD_CODE_FLOP2 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::HE
 //const int HARD_CODE_FLOP2 = (int)RANKS::K * (int)SUITS::NUM + (int)SUITS::SPADES;
 
 // few draws, monochrome
-//const int HARD_CODE_FLOP0 = (int)RANKS::TWO * (int)SUITS::NUM + (int)SUITS::CLUBS;
-//const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::CLUBS;
-//const int HARD_CODE_FLOP2 = (int)RANKS::Q * (int)SUITS::NUM + (int)SUITS::CLUBS;
+const int HARD_CODE_FLOP0 = (int)RANKS::TWO * (int)SUITS::NUM + (int)SUITS::CLUBS;
+const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::CLUBS;
+const int HARD_CODE_FLOP2 = (int)RANKS::Q * (int)SUITS::NUM + (int)SUITS::CLUBS;
 
 // trips
 //const int HARD_CODE_FLOP0 = (int)RANKS::A * (int)SUITS::NUM + (int)SUITS::CLUBS;
@@ -83,10 +105,9 @@ const int HARD_CODE_FLOP2 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::HE
 
 
 const bool DEALER_USES_FIXED_STRATEGY_FIRST_TO_ACT = false;
-const bool DEALER_ALWAYS_CHECKS_FIRST_TO_ACT = false;
 const bool DEALER_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
+const bool DEALER_ALWAYS_CHECKS_FIRST_TO_ACT = false;
 const bool PRINT_IT = true;
-const vector<vector<string>> HISTORIES_TO_PRINT = {{"", "pb"}, {"p"}, {"b"}};
 
 const int NUM_CARDS = (int)RANKS::NUM * (int)SUITS::NUM;
 
@@ -248,21 +269,20 @@ string SuitToString(int suit)
     return s;
 }
 
-string CardToString(int card)
-{
-    int rank = card / (int)SUITS::NUM;
-    int suit = card % (int)SUITS::NUM;
-    string c = RankToString(rank);
-    string s = SuitToString(suit);
-    return c + s;
-}
-
 string CardToString(int rank, int suit)
 {
     string c = RankToString(rank);
     string s = SuitToString(suit);
     return c + s;
 }
+
+string CardToString(int card)
+{
+    int rank = card / (int)SUITS::NUM;
+    int suit = card % (int)SUITS::NUM;
+    return CardToString(rank, suit);
+}
+
 
 // 0 is draw.  1 means player 0 wins.  -1 means player 1 wins
 // community cards are in slots 0,1,2.  player cards are in 3,4 and 5,6
@@ -317,6 +337,11 @@ string ConstructInfoSet(int flop0, int flop1, int flop2, int hand0, int hand1, s
     int hand1Suit = hand1 % (int)SUITS::NUM;
 
     if (hand1Rank > hand0Rank)
+    {
+        swap(hand0Rank, hand1Rank);
+        swap(hand0Suit, hand1Suit);
+    }
+    if (hand1Rank == hand0Rank && hand1Suit > hand0Suit)
     {
         swap(hand0Rank, hand1Rank);
         swap(hand0Suit, hand1Suit);
@@ -667,6 +692,32 @@ ACTIONS GetDealerFixedStrategyActionWhenBetTo(int deck[])
     return ACTIONS::PASS;
 }
 
+char PokerCompareCharHelper(char c)
+{
+    if (c == 'T') c = 'Z' + 1;
+    if (c == 'J') c = 'Z' + 2;
+    if (c == 'Q') c = 'Z' + 3;
+    if (c == 'K') c = 'Z' + 4;
+    if (c == 'A') c = 'Z' + 5;
+    if (c == 'w') c = 'z' + 1;
+    return c;
+}
+
+bool PokerCompareChar(char a, char b)
+{
+    a = PokerCompareCharHelper(a);
+    b = PokerCompareCharHelper(b);
+    return a < b;
+}
+
+struct pokerStringCompare {
+    bool operator()(const std::string& a, const std::string& b) const
+    {
+        return std::lexicographical_compare(a.begin(), a.end(),
+                                            b.begin(), b.end(), PokerCompareChar);
+    }
+};
+
 class Solver
 {
     unordered_map<string, Node> nodes;
@@ -791,61 +842,140 @@ public:
         }
     }
     
-    void Print()
+    STRATEGY_ACTIONS GetStrategyActionFromNode(const map<string, Node, pokerStringCompare> &sortedNodes, string key, const Node &node, double &percentage, double &secondaryPercentage)
     {
-        map<string, Node> sortedNodes;
-        for (const auto & [ key, node ] : nodes)
-        {
-            sortedNodes.insert({key, node});
-        }
+        percentage = -1;
+        secondaryPercentage = -1;
         
-        string firstInfoSet = sortedNodes.begin()->first;
-        string flop = firstInfoSet.substr(0, 6);
-        std::cout << "flop: \n" << flop << "\n\n";
-
-        for (vector<string> historiesToPrint : HISTORIES_TO_PRINT)
+        string flop = key.substr(0, 7);
+        string hand = key.substr(7, 5);
+        string history = key.substr(12);
+        
+        double strategy[(int)ACTIONS::NUM];
+        node.GetAverageStrategy(strategy);
+        percentage = strategy[(int)ACTIONS::BET];
+        if (history == "")
         {
-            std::cout << "\n\nhistory: \n";
-            for (string historyToPrint : historiesToPrint)
+            if (strategy[(int)ACTIONS::BET] >= 0.5)
             {
-                std::cout << "\"" << historyToPrint << "\"\n";
+                return STRATEGY_ACTIONS::OOP_BET;
             }
-            std::cout << "\n";
-            for (const auto & [ key, node ] : sortedNodes)
+            else
             {
-                string flop = node.infoSet.substr(0, 6);
-                string hand = node.infoSet.substr(6, 4);
-                string history = node.infoSet.substr(10);
-                                
-                if (history == historiesToPrint[0])
+                string secondaryKey = flop + hand + "pb";
+                auto iter = sortedNodes.find(secondaryKey);
+                if (iter != sortedNodes.end())
                 {
-                    double strategy[(int)ACTIONS::NUM];
-                    node.GetAverageStrategy(strategy);
-                    
-                    if (historiesToPrint.size() > 1 && strategy[(int)ACTIONS::BET] < 0.7)
+                    const Node &node2 = iter->second;
+                    double strategy2[(int)ACTIONS::NUM];
+                    node2.GetAverageStrategy(strategy2);
+
+                    secondaryPercentage = strategy2[(int)ACTIONS::BET];
+
+                    if (strategy2[(int)ACTIONS::BET] >= 0.5)
                     {
-                        string secondaryInfoSet = flop + hand + historiesToPrint[1];
-                        auto iter = sortedNodes.find(secondaryInfoSet);
-                        if (iter != sortedNodes.end())
-                        {
-                            const Node &node2 = iter->second;
-                            double strategy2[(int)ACTIONS::NUM];
-                            node2.GetAverageStrategy(strategy2);
-                            std::cout <<
-                                hand << " " <<
-                                std::round(strategy[(int)ACTIONS::BET] * 1000.0) / 1000.0 << " " <<
-                                std::round(strategy2[(int)ACTIONS::BET] * 1000.0) / 1000.0 <<
-                                "\n";
-                            continue;
-                        }
+                        return STRATEGY_ACTIONS::OOP_CHECK_CALL;
                     }
+                }
+                return STRATEGY_ACTIONS::OOP_CHECK_FOLD;
+            }
+        }
+        else if (history == "p")
+        {
+            if (strategy[(int)ACTIONS::BET] >= 0.5)
+            {
+                return STRATEGY_ACTIONS::IP_BET;
+            }
+            else
+            {
+                return STRATEGY_ACTIONS::IP_CHECK_BACK;
+            }
+        }
+        else if (history == "b")
+        {
+            if (strategy[(int)ACTIONS::BET] >= 0.5)
+            {
+                return STRATEGY_ACTIONS::IP_CALL;
+            }
+            else
+            {
+                return STRATEGY_ACTIONS::IP_FOLD;
+            }
+        }
+        return STRATEGY_ACTIONS::NOT_A_ROOT_NODE;
+    }
+    
+    void PrintActions(const map<string, Node, pokerStringCompare> &sortedNodes, STRATEGY_ACTIONS actionToPrint)
+    {
+        std::cout << "\n\naction: " << strategyActionStrings[(int)actionToPrint] << "\n\n";
+        for (const auto & [ key, node ] : sortedNodes)
+        {
+            double percentage, secondaryPercentage;
+            STRATEGY_ACTIONS strategyAction = GetStrategyActionFromNode(sortedNodes, key, node, percentage, secondaryPercentage);
+
+            if (strategyAction == actionToPrint)
+            {
+                string hand = key.substr(7, 5);
+                if (secondaryPercentage >= 0)
+                {
                     std::cout <<
                         hand << " " <<
-                        std::round(strategy[(int)ACTIONS::BET] * 1000.0) / 1000.0 <<
+                        std::round(percentage * 1000.0) / 1000.0 << " " <<
+                        std::round(secondaryPercentage * 1000.0) / 1000.0 <<
+                        "\n";
+                }
+                else
+                {
+                    std::cout <<
+                        hand << " " <<
+                        std::round(percentage * 1000.0) / 1000.0 <<
                         "\n";
                 }
             }
         }
+    }
+    
+    void Print()
+    {
+        map<string, Node, pokerStringCompare> sortedNodes;
+        for (const auto & [ key, node ] : nodes)
+        {
+            string flop = node.infoSet.substr(0, 6);
+            string hand = node.infoSet.substr(6, 4);
+            string history = node.infoSet.substr(10);
+            
+            string humanReadableFlop;
+            humanReadableFlop += flop[0];
+            humanReadableFlop += flop[2];
+            humanReadableFlop += flop[4];
+            humanReadableFlop += " ";
+            humanReadableFlop += flop[1];
+            humanReadableFlop += flop[3];
+            humanReadableFlop += flop[5];
+
+            string humanReadableHand;
+            humanReadableHand += hand[0];
+            humanReadableHand += hand[2];
+            humanReadableHand += " ";
+            humanReadableHand += hand[1];
+            humanReadableHand += hand[3];
+            
+            string humanReadableInfoSet = humanReadableFlop + humanReadableHand + history;
+
+            sortedNodes.insert({humanReadableInfoSet, node});
+        }
+        
+        string firstInfoSet = sortedNodes.begin()->first;
+        string flop = firstInfoSet.substr(0, 7);
+        std::cout << "flop: \n" << flop << "\n\n";
+
+        PrintActions(sortedNodes, STRATEGY_ACTIONS::OOP_BET);
+        PrintActions(sortedNodes, STRATEGY_ACTIONS::OOP_CHECK_CALL);
+        PrintActions(sortedNodes, STRATEGY_ACTIONS::OOP_CHECK_FOLD);
+        PrintActions(sortedNodes, STRATEGY_ACTIONS::IP_CALL);
+        PrintActions(sortedNodes, STRATEGY_ACTIONS::IP_FOLD);
+        PrintActions(sortedNodes, STRATEGY_ACTIONS::IP_BET);
+        PrintActions(sortedNodes, STRATEGY_ACTIONS::IP_CHECK_BACK);
     }
     
     void Solve()
@@ -872,7 +1002,7 @@ public:
         }
         ev /= (NUM_ITERATIONS/2);
 
-        std::cout << "Total ev: " << ev << "\n";
+        std::cout << "Iterations: " << NUM_ITERATIONS << "\nTotal ev: " << ev << "\n";
         if (PRINT_IT)
         {
             Print();

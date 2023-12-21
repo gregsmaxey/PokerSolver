@@ -47,7 +47,7 @@ enum class SUITS
 
 //todo: I see both 3xy and 3yx in the infosets
 
-const int NUM_ITERATIONS = 10000000;
+const int NUM_ITERATIONS = 1000000;
 const int BET_AMOUNT = 2;
 const double BET_RAKE_ON_PLAYER_WIN = 0.5;
 const bool HARD_CODE_FLOP = true;
@@ -86,9 +86,17 @@ const bool DEALER_USES_FIXED_STRATEGY_FIRST_TO_ACT = false;
 const bool DEALER_ALWAYS_CHECKS_FIRST_TO_ACT = false;
 const bool DEALER_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
 const bool PRINT_IT = true;
-const vector<string> FILTERS_TO_PRINT = {"", "pb", "p", "b"};
+const vector<vector<string>> HISTORIES_TO_PRINT = {{"", "pb"}, {"p"}, {"b"}};
 
 const int NUM_CARDS = (int)RANKS::NUM * (int)SUITS::NUM;
+
+// how can I visualize this better?
+// put checks and check/fold and check/call together for hands
+// put hands into categories - quads, pair, gutshot, etc.
+// separate the hands by bet, check/fold, check/call
+// if possible, separate the bets into bluff and value.  maybe bluffs are 9 high and lower.  or where the ev on check/check is low
+// put it into a 13x13 matrix.  maybe export in some format and load in GTOWizard
+
 
 HandEvaluator handEvaluator;
 
@@ -174,20 +182,6 @@ public:
             std::round(strategy[(int)ACTIONS::PASS] * 1000.0) / 1000.0 << " Bet: " <<
             std::round(strategy[(int)ACTIONS::BET] * 1000.0) / 1000.0 <<
             "\n";
-    }
-    
-    void PrintSome(string historyToPrint) const
-    {
-        string flop = infoSet.substr(0, 6);
-        string hand = infoSet.substr(6, 4);
-        string history = infoSet.substr(10);
-        
-        if (history == historyToPrint)
-        {
-            double strategy[(int)ACTIONS::NUM];
-            GetAverageStrategy(strategy);
-            std::cout << hand << " " << std::round(strategy[(int)ACTIONS::BET] * 1000.0) / 1000.0 << "\n";
-        }
     }
 };
 
@@ -805,16 +799,51 @@ public:
             sortedNodes.insert({key, node});
         }
         
-        string infoSet = sortedNodes.begin()->first;
-        string flop = infoSet.substr(0, 6);
+        string firstInfoSet = sortedNodes.begin()->first;
+        string flop = firstInfoSet.substr(0, 6);
         std::cout << "flop: \n" << flop << "\n\n";
 
-        for (string filterToPrint : FILTERS_TO_PRINT)
+        for (vector<string> historiesToPrint : HISTORIES_TO_PRINT)
         {
-            std::cout << "\n\nhistory: \n" << filterToPrint << "\n\n";
+            std::cout << "\n\nhistory: \n";
+            for (string historyToPrint : historiesToPrint)
+            {
+                std::cout << "\"" << historyToPrint << "\"\n";
+            }
+            std::cout << "\n";
             for (const auto & [ key, node ] : sortedNodes)
             {
-                node.PrintSome(filterToPrint);
+                string flop = node.infoSet.substr(0, 6);
+                string hand = node.infoSet.substr(6, 4);
+                string history = node.infoSet.substr(10);
+                                
+                if (history == historiesToPrint[0])
+                {
+                    double strategy[(int)ACTIONS::NUM];
+                    node.GetAverageStrategy(strategy);
+                    
+                    if (historiesToPrint.size() > 1 && strategy[(int)ACTIONS::BET] < 0.7)
+                    {
+                        string secondaryInfoSet = flop + hand + historiesToPrint[1];
+                        auto iter = sortedNodes.find(secondaryInfoSet);
+                        if (iter != sortedNodes.end())
+                        {
+                            const Node &node2 = iter->second;
+                            double strategy2[(int)ACTIONS::NUM];
+                            node2.GetAverageStrategy(strategy2);
+                            std::cout <<
+                                hand << " " <<
+                                std::round(strategy[(int)ACTIONS::BET] * 1000.0) / 1000.0 << " " <<
+                                std::round(strategy2[(int)ACTIONS::BET] * 1000.0) / 1000.0 <<
+                                "\n";
+                            continue;
+                        }
+                    }
+                    std::cout <<
+                        hand << " " <<
+                        std::round(strategy[(int)ACTIONS::BET] * 1000.0) / 1000.0 <<
+                        "\n";
+                }
             }
         }
     }

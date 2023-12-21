@@ -49,18 +49,44 @@ enum class SUITS
 
 const int NUM_ITERATIONS = 10000000;
 const int BET_AMOUNT = 2;
-const double BET_RAKE_ON_PLAYER_WIN = 0.0;
+const double BET_RAKE_ON_PLAYER_WIN = 0.5;
 const bool HARD_CODE_FLOP = true;
 
-// lots of draws
-const int HARD_CODE_FLOP0 = (int)RANKS::FIVE * (int)SUITS::NUM + (int)SUITS::CLUBS;
-const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::CLUBS;
-const int HARD_CODE_FLOP2 = (int)RANKS::K * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+const int HARD_CODE_FLOP0 = (int)RANKS::FOUR * (int)SUITS::NUM + (int)SUITS::CLUBS;
+const int HARD_CODE_FLOP1 = (int)RANKS::FIVE * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+const int HARD_CODE_FLOP2 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::HEARTS;
 
-const bool DEALER_USES_FIXED_STRATEGY = true;
+// typical flop
+//const int HARD_CODE_FLOP0 = (int)RANKS::FIVE * (int)SUITS::NUM + (int)SUITS::CLUBS;
+//const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::CLUBS;
+//const int HARD_CODE_FLOP2 = (int)RANKS::K * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+
+//paired high card
+//const int HARD_CODE_FLOP0 = (int)RANKS::FIVE * (int)SUITS::NUM + (int)SUITS::CLUBS;
+//const int HARD_CODE_FLOP1 = (int)RANKS::K * (int)SUITS::NUM + (int)SUITS::CLUBS;
+//const int HARD_CODE_FLOP2 = (int)RANKS::K * (int)SUITS::NUM + (int)SUITS::SPADES;
+
+// few draws, monochrome
+//const int HARD_CODE_FLOP0 = (int)RANKS::TWO * (int)SUITS::NUM + (int)SUITS::CLUBS;
+//const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::CLUBS;
+//const int HARD_CODE_FLOP2 = (int)RANKS::Q * (int)SUITS::NUM + (int)SUITS::CLUBS;
+
+// trips
+//const int HARD_CODE_FLOP0 = (int)RANKS::A * (int)SUITS::NUM + (int)SUITS::CLUBS;
+//const int HARD_CODE_FLOP1 = (int)RANKS::A * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+//const int HARD_CODE_FLOP2 = (int)RANKS::A * (int)SUITS::NUM + (int)SUITS::HEARTS;
+
+// lots of draws
+//const int HARD_CODE_FLOP0 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::CLUBS;
+//const int HARD_CODE_FLOP1 = (int)RANKS::NINE * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+//const int HARD_CODE_FLOP2 = (int)RANKS::Q * (int)SUITS::NUM + (int)SUITS::HEARTS;
+
+
+const bool DEALER_USES_FIXED_STRATEGY_FIRST_TO_ACT = false;
+const bool DEALER_ALWAYS_CHECKS_FIRST_TO_ACT = false;
+const bool DEALER_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
 const bool PRINT_IT = true;
-const bool FILTER_PRINT = true;
-const string HISTORY_TO_PRINT = "p";
+const vector<string> FILTERS_TO_PRINT = {"", "pb", "p", "b"};
 
 const int NUM_CARDS = (int)RANKS::NUM * (int)SUITS::NUM;
 
@@ -150,13 +176,13 @@ public:
             "\n";
     }
     
-    void PrintSome() const
+    void PrintSome(string historyToPrint) const
     {
         string flop = infoSet.substr(0, 6);
         string hand = infoSet.substr(6, 4);
         string history = infoSet.substr(10);
         
-        if (history == HISTORY_TO_PRINT)
+        if (history == historyToPrint)
         {
             double strategy[(int)ACTIONS::NUM];
             GetAverageStrategy(strategy);
@@ -680,17 +706,22 @@ public:
             }
         }
         
-        if (DEALER_USES_FIXED_STRATEGY && player == 0)
+        if (DEALER_USES_FIXED_STRATEGY_FIRST_TO_ACT && player == 0 && plays == 0)
         {
-            ACTIONS action;
-            if (plays == 0)
-            {
-                action = GetDealerFixedStrategyActionFirstToAct(deck);
-            }
-            else
-            {
-                action = GetDealerFixedStrategyActionWhenBetTo(deck);
-            }
+            ACTIONS action = GetDealerFixedStrategyActionFirstToAct(deck);
+            string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
+            double ev = - CFR(deck, nextHistory, probability0, probability1);
+            return ev;
+        }
+        else if (DEALER_ALWAYS_CHECKS_FIRST_TO_ACT && player == 0 && plays == 0)
+        {
+            string nextHistory = history + "p";
+            double ev = - CFR(deck, nextHistory, probability0, probability1);
+            return ev;
+        }
+        else if (DEALER_USES_FIXED_STRATEGY_WHEN_BET_TO && player == 0 && plays == 2)
+        {
+            ACTIONS action = GetDealerFixedStrategyActionWhenBetTo(deck);
             string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
             double ev = - CFR(deck, nextHistory, probability0, probability1);
             return ev;
@@ -778,15 +809,12 @@ public:
         string flop = infoSet.substr(0, 6);
         std::cout << "flop: \n" << flop << "\n\n";
 
-        for (const auto & [ key, node ] : sortedNodes)
+        for (string filterToPrint : FILTERS_TO_PRINT)
         {
-            if (FILTER_PRINT)
+            std::cout << "\n\nhistory: \n" << filterToPrint << "\n\n";
+            for (const auto & [ key, node ] : sortedNodes)
             {
-                node.PrintSome();
-            }
-            else
-            {
-                node.Print();
+                node.PrintSome(filterToPrint);
             }
         }
     }

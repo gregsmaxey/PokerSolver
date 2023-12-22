@@ -45,6 +45,8 @@ enum class SUITS
     W,
 };
 
+const int NUM_CARDS = (int)RANKS::NUM * (int)SUITS::NUM;
+
 enum class STRATEGY_ACTIONS
 {
     OOP_BET = 0,
@@ -69,14 +71,16 @@ const vector<string> strategyActionStrings = {
     "NOT_A_ROOT_NODE",
 };
 
+// -0.07015, -0.07078 for 40,000,000 iterations for default fixed strategy
+
 const int NUM_ITERATIONS = 10000000;
 const int BET_AMOUNT = 2;
 const double BET_RAKE_ON_PLAYER_WIN = 0.0;
 const bool HARD_CODE_FLOP = true;
 
-//const int HARD_CODE_FLOP0 = (int)RANKS::FOUR * (int)SUITS::NUM + (int)SUITS::CLUBS;
-//const int HARD_CODE_FLOP1 = (int)RANKS::FIVE * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
-//const int HARD_CODE_FLOP2 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::HEARTS;
+const int HARD_CODE_FLOP0 = (int)RANKS::TEN * (int)SUITS::NUM + (int)SUITS::HEARTS;
+const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+const int HARD_CODE_FLOP2 = (int)RANKS::THREE * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
 
 // typical flop
 //const int HARD_CODE_FLOP0 = (int)RANKS::FIVE * (int)SUITS::NUM + (int)SUITS::CLUBS;
@@ -89,9 +93,9 @@ const bool HARD_CODE_FLOP = true;
 //const int HARD_CODE_FLOP2 = (int)RANKS::K * (int)SUITS::NUM + (int)SUITS::SPADES;
 
 // few draws, monochrome
-const int HARD_CODE_FLOP0 = (int)RANKS::TWO * (int)SUITS::NUM + (int)SUITS::CLUBS;
-const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::CLUBS;
-const int HARD_CODE_FLOP2 = (int)RANKS::Q * (int)SUITS::NUM + (int)SUITS::CLUBS;
+//const int HARD_CODE_FLOP0 = (int)RANKS::TWO * (int)SUITS::NUM + (int)SUITS::CLUBS;
+//const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::CLUBS;
+//const int HARD_CODE_FLOP2 = (int)RANKS::Q * (int)SUITS::NUM + (int)SUITS::CLUBS;
 
 // trips
 //const int HARD_CODE_FLOP0 = (int)RANKS::A * (int)SUITS::NUM + (int)SUITS::CLUBS;
@@ -103,18 +107,19 @@ const int HARD_CODE_FLOP2 = (int)RANKS::Q * (int)SUITS::NUM + (int)SUITS::CLUBS;
 //const int HARD_CODE_FLOP1 = (int)RANKS::NINE * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
 //const int HARD_CODE_FLOP2 = (int)RANKS::Q * (int)SUITS::NUM + (int)SUITS::HEARTS;
 
+// fixed strategy: .062
+// gto: .025
+// gto first to act, fixed when bet to: .026
+// gto when bet to, fixed when first to act: .057
 
 const bool DEALER_USES_FIXED_STRATEGY_FIRST_TO_ACT = false;
-const bool DEALER_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
+const bool DEALER_USES_FIXED_STRATEGY_WHEN_BET_TO = true;
 const bool DEALER_ALWAYS_CHECKS_FIRST_TO_ACT = false;
-const bool PRINT_IT = true;
-
-const int NUM_CARDS = (int)RANKS::NUM * (int)SUITS::NUM;
+const bool DEALER_CAN_SLOW_PLAY = true;
+const bool PRINT_IT = false;
 
 // how can I visualize this better?
-// put checks and check/fold and check/call together for hands
 // put hands into categories - quads, pair, gutshot, etc.
-// separate the hands by bet, check/fold, check/call
 // if possible, separate the bets into bluff and value.  maybe bluffs are 9 high and lower.  or where the ev on check/check is low
 // put it into a 13x13 matrix.  maybe export in some format and load in GTOWizard
 
@@ -476,7 +481,7 @@ string ConstructInfoSet(int flop0, int flop1, int flop2, int hand0, int hand1, s
         history;
 }
 
-bool CheckForBluffCatcher(int deck[])
+int CountHighCardRanksBelowHighest(int deck[])
 {
     int flop0Rank = deck[0] / (int)SUITS::NUM;
     int flop1Rank = deck[1] / (int)SUITS::NUM;
@@ -484,27 +489,21 @@ bool CheckForBluffCatcher(int deck[])
     int hand0Rank = deck[3] / (int)SUITS::NUM;
     int hand1Rank = deck[4] / (int)SUITS::NUM;
     
-    // check when having a high card of the highest or second highest rank
-    int highestRank = 12;
-    int secondHighestRank = 11;
-    while (highestRank == flop0Rank ||
-        highestRank == flop1Rank ||
-        highestRank == flop2Rank)
-    {
-        highestRank--;
-        secondHighestRank--;
-    }
-    while (secondHighestRank == flop0Rank ||
-           secondHighestRank == flop1Rank ||
-           secondHighestRank == flop2Rank)
-    {
-        secondHighestRank--;
-    }
+    int handHighCard = (hand0Rank > hand1Rank) ? hand0Rank : hand1Rank;
     
-    return (hand0Rank == highestRank ||
-            hand1Rank == highestRank ||
-            hand0Rank == secondHighestRank ||
-            hand1Rank == secondHighestRank);
+    int ranksUnderHighest = (int)RANKS::A - handHighCard;
+    
+    if (flop0Rank > handHighCard) ranksUnderHighest--;
+    if (flop1Rank > handHighCard && flop1Rank != flop0Rank) ranksUnderHighest--;
+    if (flop2Rank > handHighCard && flop2Rank != flop0Rank && flop2Rank != flop1Rank) ranksUnderHighest--;
+
+    return ranksUnderHighest;
+}
+
+bool CheckForBluffCatcher(int deck[])
+{
+    // K high or A high, unless the board has one
+    return (CountHighCardRanksBelowHighest(deck) <= 1);
 }
 
 bool CheckForStraightDraws(int deck[])
@@ -570,19 +569,76 @@ bool CheckForStraightDraws(int deck[])
     return false;
 }
 
-ACTIONS GetDealerFixedStrategyActionFirstToAct(int deck[])
+void GetHandInfo(int deck[], int &holeCardsMatchingBoard, int &handValue)
 {
+    int flop0Rank = deck[0] / (int)SUITS::NUM;
+    int flop1Rank = deck[1] / (int)SUITS::NUM;
+    int flop2Rank = deck[2] / (int)SUITS::NUM;
+    int hand0Rank = deck[3] / (int)SUITS::NUM;
+    int hand1Rank = deck[4] / (int)SUITS::NUM;
+
+    holeCardsMatchingBoard = 0;
+    if (hand0Rank == flop0Rank ||
+        hand0Rank == flop1Rank ||
+        hand0Rank == flop2Rank)
+    {
+        holeCardsMatchingBoard++;
+    }
+    if (hand1Rank == flop0Rank ||
+        hand1Rank == flop1Rank ||
+        hand1Rank == flop2Rank)
+    {
+        holeCardsMatchingBoard++;
+    }
+
     Hand hand = Hand::empty();
     hand += Hand(deck[0]) + Hand(deck[1]) + Hand(deck[2]) + Hand(deck[3]) + Hand(deck[4]);
 
-    uint16_t handValue = handEvaluator.evaluate(hand);
-    
-    // any straight or higher
-    if (handValue >= STRAIGHT)
+    handValue = handEvaluator.evaluate(hand);
+}
+
+// slow play straight or higher or set
+bool CheckForSlowPlay(int deck[], int holeCardsMatchingBoard, int handValue)
+{
+    int hand0Rank = deck[3] / (int)SUITS::NUM;
+    int hand1Rank = deck[4] / (int)SUITS::NUM;
+
+    if (!DEALER_CAN_SLOW_PLAY)
     {
-        return ACTIONS::BET;
+        return false;
     }
 
+    if (holeCardsMatchingBoard == 2 && hand0Rank == hand1Rank)
+    {
+        return true;
+    }
+/*
+    if (hand0Rank == hand1Rank)
+    {
+        // any pocket pair J or higher slow plays
+        if (hand0Rank >= (int)RANKS::J)
+        {
+            return true;
+        }
+    }
+*/
+    if (handValue >= STRAIGHT)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+ACTIONS GetDealerFixedStrategyActionFirstToAct(int deck[])
+{
+    int holeCardsMatchingBoard, handValue;
+    GetHandInfo(deck, holeCardsMatchingBoard, handValue);
+    if (CheckForSlowPlay(deck, holeCardsMatchingBoard, handValue))
+    {
+        return ACTIONS::PASS;
+    }
+    
     int flop0Rank = deck[0] / (int)SUITS::NUM;
     int flop0Suit = deck[0] % (int)SUITS::NUM;
     int flop1Rank = deck[1] / (int)SUITS::NUM;
@@ -594,19 +650,13 @@ ACTIONS GetDealerFixedStrategyActionFirstToAct(int deck[])
     int hand1Rank = deck[4] / (int)SUITS::NUM;
     int hand1Suit = deck[4] % (int)SUITS::NUM;
 
-    // any pocket pair
-    if (hand0Rank == hand1Rank)
+    if (handValue >= STRAIGHT || holeCardsMatchingBoard > 0)
     {
         return ACTIONS::BET;
     }
-    
-    // any pocket card matching the board
-    if (hand0Rank == flop0Rank ||
-        hand0Rank == flop1Rank ||
-        hand0Rank == flop2Rank ||
-        hand1Rank == flop0Rank ||
-        hand1Rank == flop1Rank ||
-        hand1Rank == flop2Rank)
+
+    // any pocket pair
+    if (hand0Rank == hand1Rank)
     {
         return ACTIONS::BET;
     }
@@ -688,7 +738,13 @@ ACTIONS GetDealerFixedStrategyActionWhenBetTo(int deck[])
     {
         return ACTIONS::BET;
     }
-    // maybe I could run this one without fixed strategy to see what's best
+
+    int holeCardsMatchingBoard, handValue;
+    GetHandInfo(deck, holeCardsMatchingBoard, handValue);
+    if (handValue >= STRAIGHT || holeCardsMatchingBoard > 0)
+    {
+        return ACTIONS::BET;
+    }
     return ACTIONS::PASS;
 }
 
@@ -982,8 +1038,13 @@ public:
     {
         int deck[NUM_CARDS];
         double ev = 0;
+        cout << "--------------------\n";
         for (int iteration = 0; iteration < NUM_ITERATIONS; iteration++)
         {
+            if (iteration % (NUM_ITERATIONS/20) == 0)
+            {
+                cout << ".";
+            }
             // clear out strategy halfway through for efficiency.  cfr+ has a better weighted sum
             if (iteration == NUM_ITERATIONS/2)
             {
@@ -1002,7 +1063,7 @@ public:
         }
         ev /= (NUM_ITERATIONS/2);
 
-        std::cout << "Iterations: " << NUM_ITERATIONS << "\nTotal ev: " << ev << "\n";
+        std::cout << "\n\nIterations: " << NUM_ITERATIONS << "\nTotal ev: " << ev << "\n";
         if (PRINT_IT)
         {
             Print();

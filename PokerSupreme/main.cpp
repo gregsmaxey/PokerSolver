@@ -1,6 +1,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <map>
+#include <set>
 
 #include "../OMPEval/omp/HandEvaluator.h"
 
@@ -73,7 +74,7 @@ const vector<string> strategyActionStrings = {
 
 // -0.07015, -0.07078 for 40,000,000 iterations for default fixed strategy
 
-const int NUM_ITERATIONS = 10000000;
+const int NUM_ITERATIONS = 5000000;
 const int BET_AMOUNT = 2;
 const double BET_RAKE_ON_PLAYER_WIN = 0.0;
 const bool HARD_CODE_FLOP = true;
@@ -113,10 +114,481 @@ const int HARD_CODE_FLOP2 = (int)RANKS::THREE * (int)SUITS::NUM + (int)SUITS::DI
 // gto when bet to, fixed when first to act: .057
 
 const bool DEALER_USES_FIXED_STRATEGY_FIRST_TO_ACT = false;
-const bool DEALER_USES_FIXED_STRATEGY_WHEN_BET_TO = true;
+const bool DEALER_USES_HARD_CODED_HANDS_STRATEGY_FIRST_TO_ACT = false;
+const bool DEALER_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
 const bool DEALER_ALWAYS_CHECKS_FIRST_TO_ACT = false;
 const bool DEALER_CAN_SLOW_PLAY = true;
 const bool PRINT_IT = false;
+
+set<string> hardCodedHands = {
+    "2x2y",
+    "2x2z",
+    "2y2z",
+    "2z2x",
+    "2z2y",
+    "2z2w",
+    "3x2x",
+    "3x2y",
+    "3x2z",
+    "3z2x",
+    "3z2y",
+    "3z2z",
+    "3z2w",
+    "4y2y",
+    "4x3x",
+    "4x3z",
+    "4y3x",
+    "4y3z",
+    "4z3x",
+    "4z3z",
+    "4z3w",
+    "4x4y",
+    "4x4z",
+    "4y4z",
+    "4z4x",
+    "4z4y",
+    "4z4w",
+    "5y2y",
+    "5x3x",
+    "5x3z",
+    "5y3x",
+    "5y3z",
+    "5z3x",
+    "5z3z",
+    "5z3w",
+    "5x4x",
+    "5x4y",
+    "5x4z",
+    "5y4x",
+    "5y4y",
+    "5y4z",
+    "5z4x",
+    "5z4y",
+    "5z4z",
+    "5z4w",
+    "5x5y",
+    "5x5z",
+    "5y5z",
+    "5z5x",
+    "5z5y",
+    "5z5w",
+    "6y2y",
+    "6x3x",
+    "6x3z",
+    "6y3x",
+    "6y3z",
+    "6z3x",
+    "6z3z",
+    "6z3w",
+    "6x4x",
+    "6x4y",
+    "6x4z",
+    "6y4x",
+    "6y4y",
+    "6y4z",
+    "6z4x",
+    "6z4y",
+    "6z4z",
+    "6z4w",
+    "6x5x",
+    "6x5y",
+    "6x5z",
+    "6y5x",
+    "6y5y",
+    "6y5z",
+    "6z5x",
+    "6z5y",
+    "6z5z",
+    "6z5w",
+    "6x6y",
+    "6x6z",
+    "6y6z",
+    "6z6x",
+    "6z6y",
+    "6z6w",
+    "7x2x",
+    "7x2y",
+    "7x2z",
+    "7z2x",
+    "7z2y",
+    "7z2z",
+    "7z2w",
+    "7z3x",
+    "7z3z",
+    "7z3w",
+    "7x4x",
+    "7x4y",
+    "7x4z",
+    "7z4x",
+    "7z4y",
+    "7z4z",
+    "7z4w",
+    "7x5x",
+    "7x5y",
+    "7x5z",
+    "7z5x",
+    "7z5y",
+    "7z5z",
+    "7z5w",
+    "7x6x",
+    "7x6y",
+    "7x6z",
+    "7z6x",
+    "7z6y",
+    "7z6z",
+    "7z6w",
+    "7x7z",
+    "7z7w",
+    "8y2y",
+    "8x3x",
+    "8x3z",
+    "8y3x",
+    "8y3z",
+    "8z3x",
+    "8z3z",
+    "8z3w",
+    "8y4y",
+    "8y5y",
+    "8x6x",
+    "8x6y",
+    "8x6z",
+    "8y6x",
+    "8y6y",
+    "8y6z",
+    "8z6x",
+    "8z6y",
+    "8z6z",
+    "8z6w",
+    "8x7x",
+    "8x7z",
+    "8z7x",
+    "8z7z",
+    "8z7w",
+    "8x8y",
+    "8x8z",
+    "8y8z",
+    "8z8x",
+    "8z8y",
+    "8z8w",
+    "9y2y",
+    "9x3x",
+    "9x3z",
+    "9y3x",
+    "9y3z",
+    "9z3x",
+    "9z3z",
+    "9z3w",
+    "9y4y",
+    "9y5y",
+    "9x6x",
+    "9x6y",
+    "9x6z",
+    "9y6x",
+    "9y6y",
+    "9y6z",
+    "9z6x",
+    "9z6y",
+    "9z6z",
+    "9z6w",
+    "9x7x",
+    "9x7z",
+    "9y7x",
+    "9z7x",
+    "9z7z",
+    "9z7w",
+    "9x8x",
+    "9x8y",
+    "9x8z",
+    "9y8x",
+    "9y8y",
+    "9y8z",
+    "9z8x",
+    "9z8y",
+    "9z8z",
+    "9z8w",
+    "9x9z",
+    "9z9x",
+    "9z9w",
+    "Ty2x",
+    "Ty2z",
+    "Tz2x",
+    "Tz2y",
+    "Tz2z",
+    "Tz2w",
+    "Tz3x",
+    "Tz3z",
+    "Tz3w",
+    "Ty4z",
+    "Tz4x",
+    "Tz4y",
+    "Tz4z",
+    "Tz4w",
+    "Ty5z",
+    "Tz5x",
+    "Tz5y",
+    "Tz5z",
+    "Tz5w",
+    "Tz6x",
+    "Tz6z",
+    "Tz6w",
+    "Tz7x",
+    "Tz7z",
+    "Tz7w",
+    "Ty8x",
+    "Ty8z",
+    "Tz8x",
+    "Tz8z",
+    "Tz8w",
+    "Ty9x",
+    "Tz9x",
+    "Tz9z",
+    "Tz9w",
+    "TzTy",
+    "Jy2y",
+    "Jx3x",
+    "Jx3z",
+    "Jy3x",
+    "Jy3z",
+    "Jz3x",
+    "Jz3z",
+    "Jz3w",
+    "Jx4x",
+    "Jy4x",
+    "Jy4y",
+    "Jy4z",
+    "Jz4y",
+    "Jx5x",
+    "Jy5x",
+    "Jy5y",
+    "Jy5z",
+    "Jx6x",
+    "Jx6y",
+    "Jy6x",
+    "Jy6y",
+    "Jy6z",
+    "Jz6y",
+    "Jx7x",
+    "Jx7z",
+    "Jy7z",
+    "Jz7x",
+    "Jz7z",
+    "Jz7w",
+    "Jx8x",
+    "Jx8y",
+    "Jx8z",
+    "Jy8x",
+    "Jy8z",
+    "Jz8x",
+    "Jz8y",
+    "Jz8z",
+    "Jz8w",
+    "Jx9x",
+    "Jx9y",
+    "Jx9z",
+    "Jy9x",
+    "Jy9z",
+    "Jz9x",
+    "Jz9y",
+    "Jz9z",
+    "Jz9w",
+    "JzTz",
+    "JzTw",
+    "Qx3x",
+    "Qx3z",
+    "Qy3x",
+    "Qy3z",
+    "Qz3x",
+    "Qz3z",
+    "Qz3w",
+    "Qx4x",
+    "Qy4x",
+    "Qy4z",
+    "Qx5x",
+    "Qy5x",
+    "Qy5z",
+    "Qx6x",
+    "Qy6x",
+    "Qy6z",
+    "Qz6y",
+    "Qx7x",
+    "Qx7z",
+    "Qy7x",
+    "Qy7z",
+    "Qz7x",
+    "Qz7z",
+    "Qz7w",
+    "Qx8x",
+    "Qx9x",
+    "Qx9y",
+    "Qx9z",
+    "Qy9z",
+    "Qz9x",
+    "Qz9z",
+    "Qz9w",
+    "QxTz",
+    "QzTz",
+    "QzTw",
+    "QxJx",
+    "QxJy",
+    "QxJz",
+    "QyJx",
+    "QyJz",
+    "QzJx",
+    "QzJy",
+    "QzJz",
+    "QzJw",
+    "Kx3x",
+    "Kx3z",
+    "Ky3x",
+    "Ky3z",
+    "Kz3x",
+    "Kz3z",
+    "Kz3w",
+    "Kx7x",
+    "Kx7z",
+    "Ky7x",
+    "Ky7z",
+    "Kz7x",
+    "Kz7z",
+    "Kz7w",
+    "Kx8z",
+    "Kz8x",
+    "Kz8z",
+    "Kz8w",
+    "Kx9x",
+    "Kx9y",
+    "Kx9z",
+    "Ky9x",
+    "Kz9x",
+    "Kz9y",
+    "Kz9z",
+    "Kz9w",
+    "KxTz",
+    "KzTz",
+    "KzTw",
+    "KxJx",
+    "KxJy",
+    "KxJz",
+    "KyJx",
+    "KyJz",
+    "KzJx",
+    "KzJy",
+    "KzJz",
+    "KzJw",
+    "KxQx",
+    "KxQy",
+    "KxQz",
+    "KyQx",
+    "KyQz",
+    "KzQx",
+    "KzQy",
+    "KzQz",
+    "KzQw",
+    "Ax2x",
+    "Ax2y",
+    "Ax2z",
+    "Ay2x",
+    "Ay2z",
+    "Az2x",
+    "Az2y",
+    "Az2w",
+    "Ax3x",
+    "Ax3z",
+    "Ay3x",
+    "Ay3z",
+    "Az3x",
+    "Az3z",
+    "Az3w",
+    "Ax4x",
+    "Ax4y",
+    "Ax4z",
+    "Ay4x",
+    "Ay4z",
+    "Az4x",
+    "Az4y",
+    "Az4z",
+    "Az4w",
+    "Ax5x",
+    "Ax5y",
+    "Ax5z",
+    "Ay5x",
+    "Ay5z",
+    "Az5x",
+    "Az5y",
+    "Az5z",
+    "Az5w",
+    "Ax6x",
+    "Ax6y",
+    "Ax6z",
+    "Ay6x",
+    "Ay6z",
+    "Az6x",
+    "Az6y",
+    "Az6z",
+    "Az6w",
+    "Ax7x",
+    "Ax7z",
+    "Ay7x",
+    "Ay7z",
+    "Az7x",
+    "Az7z",
+    "Az7w",
+    "Ax8x",
+    "Ax8y",
+    "Ax8z",
+    "Ay8x",
+    "Ay8y",
+    "Ay8z",
+    "Az8x",
+    "Az8y",
+    "Az8z",
+    "Az8w",
+    "Ax9x",
+    "Ax9y",
+    "Ax9z",
+    "Ay9x",
+    "Ay9y",
+    "Ay9z",
+    "Az9x",
+    "Az9y",
+    "Az9z",
+    "Az9w",
+    "AxTy",
+    "AxTz",
+    "AyTz",
+    "AzTz",
+    "AzTw",
+    "AxJx",
+    "AxJy",
+    "AxJz",
+    "AyJx",
+    "AyJy",
+    "AyJz",
+    "AzJx",
+    "AzJy",
+    "AzJz",
+    "AzJw",
+    "AxQx",
+    "AxQy",
+    "AxQz",
+    "AyQx",
+    "AyQy",
+    "AyQz",
+    "AzQx",
+    "AzQy",
+    "AzQz",
+    "AzQw",
+    "AxKx",
+    "AxKy",
+    "AxKz",
+    "AyKx",
+    "AyKy",
+    "AyKz",
+    "AzKx",
+    "AzKy",
+    "AzKz",
+    "AzKw",
+};
 
 // how can I visualize this better?
 // put hands into categories - quads, pair, gutshot, etc.
@@ -238,6 +710,56 @@ string RankToString(int rank)
     return c;
 }
 
+int CharToRank(char rankChar)
+{
+    RANKS rankEnum = RANKS::NUM;
+    switch(rankChar)
+    {
+        case '2':
+            rankEnum = RANKS::TWO;
+            break;
+        case '3':
+            rankEnum = RANKS::THREE;
+            break;
+        case '4':
+            rankEnum = RANKS::FOUR;
+            break;
+        case '5':
+            rankEnum = RANKS::FIVE;
+            break;
+        case '6':
+            rankEnum = RANKS::SIX;
+            break;
+        case '7':
+            rankEnum = RANKS::SEVEN;
+            break;
+        case '8':
+            rankEnum = RANKS::EIGHT;
+            break;
+        case '9':
+            rankEnum = RANKS::NINE;
+            break;
+        case 'T':
+            rankEnum = RANKS::TEN;
+            break;
+        case 'J':
+            rankEnum = RANKS::J;
+            break;
+        case 'Q':
+            rankEnum = RANKS::Q;
+            break;
+        case 'K':
+            rankEnum = RANKS::K;
+            break;
+        case 'A':
+            rankEnum = RANKS::A;
+            break;
+        default:
+            break;
+    }
+    return (int)rankEnum;
+}
+
 string SuitToString(int suit)
 {
     SUITS suitEnum = (SUITS)suit;
@@ -274,6 +796,33 @@ string SuitToString(int suit)
     return s;
 }
 
+int CharToSuit(char suitChar)
+{
+    SUITS suitEnum = SUITS::NUM;
+    switch(suitChar)
+    {
+        case 'c':
+        case 'x':
+            suitEnum = SUITS::CLUBS;
+            break;
+        case 'd':
+        case 'y':
+            suitEnum = SUITS::DIAMONDS;
+            break;
+        case 'h':
+        case 'z':
+            suitEnum = SUITS::HEARTS;
+            break;
+        case 's':
+        case 'w':
+            suitEnum = SUITS::SPADES;
+            break;
+        default:
+            break;
+    }
+    return (int)suitEnum;
+}
+
 string CardToString(int rank, int suit)
 {
     string c = RankToString(rank);
@@ -286,6 +835,59 @@ string CardToString(int card)
     int rank = card / (int)SUITS::NUM;
     int suit = card % (int)SUITS::NUM;
     return CardToString(rank, suit);
+}
+
+int StringToCard(string card)
+{
+    if (card.size() != 2) return -1;
+    int rank = CharToRank(card[0]);
+    int suit = CharToRank(card[1]);
+    return rank * (int)SUITS::NUM + suit;
+}
+
+string InfoSetToHandType(string infoSet)
+{
+    Hand hand = Hand::empty();
+    hand += StringToCard(infoSet.substr(0,2));
+    hand += StringToCard(infoSet.substr(2,2));
+    hand += StringToCard(infoSet.substr(4,2));
+    hand += StringToCard(infoSet.substr(6,2));
+    hand += StringToCard(infoSet.substr(8,2));
+    uint16_t handValue = handEvaluator.evaluate(hand);
+    if (handValue >= STRAIGHT_FLUSH)
+    {
+        return "straight flush";
+    }
+    if (handValue >= FOUR_OF_A_KIND)
+    {
+        return "quads";
+    }
+    if (handValue >= FULL_HOUSE)
+    {
+        return "boat";
+    }
+    if (handValue >= FLUSH)
+    {
+        return "flush";
+    }
+    if (handValue >= STRAIGHT)
+    {
+        return "straight";
+    }
+    if (handValue >= THREE_OF_A_KIND)
+    {
+        return "three of a kind";
+    }
+    if (handValue >= TWO_PAIR)
+    {
+        return "two pair";
+    }
+    if (handValue >= PAIR)
+    {
+        return "pair";
+    }
+    //todo: draws
+    return "high card";
 }
 
 
@@ -525,24 +1127,41 @@ bool CheckForStraightDraws(int deck[])
     rankExists[flop2Rank] = true;
     rankExists[hand0Rank] = true;
     rankExists[hand1Rank] = true;
+    
+//    double straightOuts = 0;
+//    looking into bluffing with x outs or more, contributed to by, eg, backdoor straight draws
+//    I could ... try making the dealer do exactly the strategy that came out of the solver by making a table
+//    then make sure that still gets around 2%.  done.
+//    Then come up with ways to make the algorithm gradually get closer to that solution without hard-coding it.
+    
+    // I'd like to see in the output, per line, the type of hand.
+    // kinds of value hands:
+    // quads, flush, straight, three of a kind, two pair, over pair, under pair, pocket pair over middle, under middle,
+    // top pair, middle pair. high card top, high card second top
+    // kinda of bluffs:
+    // types of straight draws: open ended (or double gutshot) two cards, gutshot two cards, backdoor straight 3,2,1, one card stuff - dont worry now
+    // types of flush draws: front door flush (two cards), back door flush (two card), one cards stuff - dont worry now?
+    // overcard, over to middle, over to bottom, this is per card in hand
+    
+    // this could all be used to come up with a "bluff score".  each type of flop can have a threshold score to bluff
+    // though I want a simple strategy.  I really want to see what I'm doing wrong and come up with the best simple strategy.
+    
 
     for (int i = 0; i < 9; i++)
     {
-        if (rankExists[i])
+        int existingRanksForStraightStartingHere = 0;
+        if (rankExists[i]) existingRanksForStraightStartingHere++;
+        if (rankExists[i+1]) existingRanksForStraightStartingHere++;
+        if (rankExists[i+2]) existingRanksForStraightStartingHere++;
+        if (rankExists[i+3]) existingRanksForStraightStartingHere++;
+        if (rankExists[i+4]) existingRanksForStraightStartingHere++;
+        if (existingRanksForStraightStartingHere == 4)
         {
-            int existingRanksForStraightStartingHere = 1;
-            if (rankExists[i+1]) existingRanksForStraightStartingHere++;
-            if (rankExists[i+2]) existingRanksForStraightStartingHere++;
-            if (rankExists[i+3]) existingRanksForStraightStartingHere++;
-            if (rankExists[i+4]) existingRanksForStraightStartingHere++;
-            if (existingRanksForStraightStartingHere == 4)
+            // make sure both hole cards contribute
+            if (hand0Rank >= i && hand0Rank <= i + 4 &&
+              hand1Rank >= i && hand1Rank <= i + 4)
             {
-                // make sure both hold cards contribute
-                if (hand0Rank >= i && hand0Rank <= i + 4 &&
-                  hand1Rank >= i && hand1Rank <= i + 4)
-                {
-                    return true;
-                }
+                return true;
             }
         }
     }
@@ -661,10 +1280,28 @@ ACTIONS GetDealerFixedStrategyActionFirstToAct(int deck[])
         return ACTIONS::BET;
     }
     
+    // A high
+    if (CountHighCardRanksBelowHighest(deck) <= 0)
+    {
+        return ACTIONS::BET;
+    }
+
     if (CheckForBluffCatcher(deck))
     {
         return ACTIONS::PASS;
     }
+    
+    int frontDoorFlushSuit = -1;
+    if (flop0Suit == flop1Suit) frontDoorFlushSuit = flop0Suit;
+    else if (flop0Suit == flop2Suit) frontDoorFlushSuit = flop0Suit;
+    else if (flop1Suit == flop2Suit) frontDoorFlushSuit = flop1Suit;
+
+    // front door flush draws
+//    if (hand0Suit == hand1Suit &&
+//        hand0Suit == frontDoorFlushSuit)
+//    {
+//        return ACTIONS::BET;
+//    }
 
     // if both pocket cards are the same suit, if they match any suit on the board (flush draw)
     if (hand0Suit == hand1Suit &&
@@ -715,7 +1352,7 @@ ACTIONS GetDealerFixedStrategyActionFirstToAct(int deck[])
     {
         lowestRank3++;
     }
-
+/*
     // any two low cards
     if ((hand0Rank == lowestRank0 ||
         hand0Rank == lowestRank1 ||
@@ -728,7 +1365,7 @@ ACTIONS GetDealerFixedStrategyActionFirstToAct(int deck[])
     {
         return ACTIONS::BET;
     }
-
+*/
     return ACTIONS::PASS;
 }
 
@@ -810,6 +1447,21 @@ public:
         if (DEALER_USES_FIXED_STRATEGY_FIRST_TO_ACT && player == 0 && plays == 0)
         {
             ACTIONS action = GetDealerFixedStrategyActionFirstToAct(deck);
+            string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
+            double ev = - CFR(deck, nextHistory, probability0, probability1);
+            return ev;
+        }
+        else if (DEALER_USES_HARD_CODED_HANDS_STRATEGY_FIRST_TO_ACT && player == 0 && plays == 0)
+        {
+            string infoSet = ConstructInfoSet(deck[0], deck[1], deck[2], deck[3 + player * 2], deck[4 + player * 2], history);
+            string hand = infoSet.substr(6, 4);
+
+            ACTIONS action = ACTIONS::PASS;
+
+            if (hardCodedHands.contains(hand))
+            {
+                action = ACTIONS::BET;
+            }
             string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
             double ev = - CFR(deck, nextHistory, probability0, probability1);
             return ev;
@@ -977,14 +1629,14 @@ public:
                     std::cout <<
                         hand << " " <<
                         std::round(percentage * 1000.0) / 1000.0 << " " <<
-                        std::round(secondaryPercentage * 1000.0) / 1000.0 <<
+                        std::round(secondaryPercentage * 1000.0) / 1000.0 << " " << InfoSetToHandType(node.infoSet) <<
                         "\n";
                 }
                 else
                 {
                     std::cout <<
                         hand << " " <<
-                        std::round(percentage * 1000.0) / 1000.0 <<
+                        std::round(percentage * 1000.0) / 1000.0 << " " << InfoSetToHandType(node.infoSet) <<
                         "\n";
                 }
             }

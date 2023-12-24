@@ -74,7 +74,7 @@ const vector<string> strategyActionStrings = {
 
 // -0.07015, -0.07078 for 40,000,000 iterations for default fixed strategy
 
-const int NUM_ITERATIONS = 5000000;
+const int NUM_ITERATIONS = 10000000;
 const int BET_AMOUNT = 2;
 const double BET_RAKE_ON_PLAYER_WIN = 0.0;
 const bool HARD_CODE_FLOP = true;
@@ -118,7 +118,7 @@ const bool DEALER_USES_HARD_CODED_HANDS_STRATEGY_FIRST_TO_ACT = false;
 const bool DEALER_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
 const bool DEALER_ALWAYS_CHECKS_FIRST_TO_ACT = false;
 const bool DEALER_CAN_SLOW_PLAY = true;
-const bool PRINT_IT = false;
+const bool PRINT_IT = true;
 
 set<string> hardCodedHands = {
     "2x2y",
@@ -841,7 +841,7 @@ int StringToCard(string card)
 {
     if (card.size() != 2) return -1;
     int rank = CharToRank(card[0]);
-    int suit = CharToRank(card[1]);
+    int suit = CharToSuit(card[1]);
     return rank * (int)SUITS::NUM + suit;
 }
 

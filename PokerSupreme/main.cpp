@@ -74,7 +74,7 @@ const vector<string> strategyActionStrings = {
 
 // -0.07015, -0.07078 for 40,000,000 iterations for default fixed strategy
 
-const int NUM_ITERATIONS = 10000000;
+const int NUM_ITERATIONS = 1000000;
 const int BET_AMOUNT = 2;
 const double BET_RAKE_ON_PLAYER_WIN = 0.0;
 const bool HARD_CODE_FLOP = true;
@@ -113,11 +113,13 @@ const int HARD_CODE_FLOP2 = (int)RANKS::THREE * (int)SUITS::NUM + (int)SUITS::DI
 // gto first to act, fixed when bet to: .026
 // gto when bet to, fixed when first to act: .057
 
-const bool DEALER_USES_FIXED_STRATEGY_FIRST_TO_ACT = false;
-const bool DEALER_USES_HARD_CODED_HANDS_STRATEGY_FIRST_TO_ACT = false;
-const bool DEALER_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
-const bool DEALER_ALWAYS_CHECKS_FIRST_TO_ACT = false;
-const bool DEALER_CAN_SLOW_PLAY = true;
+const bool OOP_USES_FIXED_STRATEGY_FIRST_TO_ACT = false;
+const bool OOP_USES_HARD_CODED_HANDS_STRATEGY_FIRST_TO_ACT = false;
+const bool OOP_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
+const bool OOP_ALWAYS_CHECKS_FIRST_TO_ACT = false;
+const bool IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO = false;
+const bool IP_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
+const bool CAN_SLOW_PLAY = true;
 const bool PRINT_IT = true;
 
 set<string> hardCodedHands = {
@@ -1083,13 +1085,13 @@ string ConstructInfoSet(int flop0, int flop1, int flop2, int hand0, int hand1, s
         history;
 }
 
-int CountHighCardRanksBelowHighest(int deck[])
+int CountHighCardRanksBelowHighest(int flop0, int flop1, int flop2, int hand0, int hand1)
 {
-    int flop0Rank = deck[0] / (int)SUITS::NUM;
-    int flop1Rank = deck[1] / (int)SUITS::NUM;
-    int flop2Rank = deck[2] / (int)SUITS::NUM;
-    int hand0Rank = deck[3] / (int)SUITS::NUM;
-    int hand1Rank = deck[4] / (int)SUITS::NUM;
+    int flop0Rank = flop0 / (int)SUITS::NUM;
+    int flop1Rank = flop1 / (int)SUITS::NUM;
+    int flop2Rank = flop2 / (int)SUITS::NUM;
+    int hand0Rank = hand0 / (int)SUITS::NUM;
+    int hand1Rank = hand1 / (int)SUITS::NUM;
     
     int handHighCard = (hand0Rank > hand1Rank) ? hand0Rank : hand1Rank;
     
@@ -1102,20 +1104,20 @@ int CountHighCardRanksBelowHighest(int deck[])
     return ranksUnderHighest;
 }
 
-bool CheckForBluffCatcher(int deck[])
+bool CheckForBluffCatcherOOP(int flop0, int flop1, int flop2, int hand0, int hand1)
 {
     // K high or A high, unless the board has one
-    return (CountHighCardRanksBelowHighest(deck) <= 1);
+    return (CountHighCardRanksBelowHighest(flop0, flop1, flop2, hand0, hand1) <= 1);
 }
 
-bool CheckForStraightDraws(int deck[])
+bool CheckForStraightDraws(int flop0, int flop1, int flop2, int hand0, int hand1)
 {
-    int flop0Rank = deck[0] / (int)SUITS::NUM;
-    int flop1Rank = deck[1] / (int)SUITS::NUM;
-    int flop2Rank = deck[2] / (int)SUITS::NUM;
-    int hand0Rank = deck[3] / (int)SUITS::NUM;
-    int hand1Rank = deck[4] / (int)SUITS::NUM;
-    
+    int flop0Rank = flop0 / (int)SUITS::NUM;
+    int flop1Rank = flop1 / (int)SUITS::NUM;
+    int flop2Rank = flop2 / (int)SUITS::NUM;
+    int hand0Rank = hand0 / (int)SUITS::NUM;
+    int hand1Rank = hand1 / (int)SUITS::NUM;
+
     bool rankExists[13];
     for (int i = 0; i < 13; i++)
     {
@@ -1188,13 +1190,13 @@ bool CheckForStraightDraws(int deck[])
     return false;
 }
 
-void GetHandInfo(int deck[], int &holeCardsMatchingBoard, int &handValue)
+void GetHandInfo(int flop0, int flop1, int flop2, int hand0, int hand1, int &holeCardsMatchingBoard, int &handValue)
 {
-    int flop0Rank = deck[0] / (int)SUITS::NUM;
-    int flop1Rank = deck[1] / (int)SUITS::NUM;
-    int flop2Rank = deck[2] / (int)SUITS::NUM;
-    int hand0Rank = deck[3] / (int)SUITS::NUM;
-    int hand1Rank = deck[4] / (int)SUITS::NUM;
+    int flop0Rank = flop0 / (int)SUITS::NUM;
+    int flop1Rank = flop1 / (int)SUITS::NUM;
+    int flop2Rank = flop2 / (int)SUITS::NUM;
+    int hand0Rank = hand0 / (int)SUITS::NUM;
+    int hand1Rank = hand1 / (int)SUITS::NUM;
 
     holeCardsMatchingBoard = 0;
     if (hand0Rank == flop0Rank ||
@@ -1211,18 +1213,18 @@ void GetHandInfo(int deck[], int &holeCardsMatchingBoard, int &handValue)
     }
 
     Hand hand = Hand::empty();
-    hand += Hand(deck[0]) + Hand(deck[1]) + Hand(deck[2]) + Hand(deck[3]) + Hand(deck[4]);
+    hand += Hand(flop0) + Hand(flop1) + Hand(flop2) + Hand(hand0) + Hand(hand1);
 
     handValue = handEvaluator.evaluate(hand);
 }
 
 // slow play straight or higher or set
-bool CheckForSlowPlay(int deck[], int holeCardsMatchingBoard, int handValue)
+bool CheckForSlowPlay(int flop0, int flop1, int flop2, int hand0, int hand1, int holeCardsMatchingBoard, int handValue)
 {
-    int hand0Rank = deck[3] / (int)SUITS::NUM;
-    int hand1Rank = deck[4] / (int)SUITS::NUM;
+    int hand0Rank = hand0 / (int)SUITS::NUM;
+    int hand1Rank = hand1 / (int)SUITS::NUM;
 
-    if (!DEALER_CAN_SLOW_PLAY)
+    if (!CAN_SLOW_PLAY)
     {
         return false;
     }
@@ -1249,53 +1251,53 @@ bool CheckForSlowPlay(int deck[], int holeCardsMatchingBoard, int handValue)
     return false;
 }
 
-ACTIONS GetDealerFixedStrategyActionFirstToAct(int deck[])
+ACTIONS GetOOPFixedStrategyActionFirstToAct(int deck[])
 {
+    int flop0 = deck[0];
+    int flop1 = deck[1];
+    int flop2 = deck[2];
+    int hand0 = deck[3];
+    int hand1 = deck[4];
+    
     int holeCardsMatchingBoard, handValue;
-    GetHandInfo(deck, holeCardsMatchingBoard, handValue);
-    if (CheckForSlowPlay(deck, holeCardsMatchingBoard, handValue))
+    GetHandInfo(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handValue);
+    if (CheckForSlowPlay(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handValue))
     {
         return ACTIONS::PASS;
     }
     
-    int flop0Rank = deck[0] / (int)SUITS::NUM;
-    int flop0Suit = deck[0] % (int)SUITS::NUM;
-    int flop1Rank = deck[1] / (int)SUITS::NUM;
-    int flop1Suit = deck[1] % (int)SUITS::NUM;
-    int flop2Rank = deck[2] / (int)SUITS::NUM;
-    int flop2Suit = deck[2] % (int)SUITS::NUM;
-    int hand0Rank = deck[3] / (int)SUITS::NUM;
-    int hand0Suit = deck[3] % (int)SUITS::NUM;
-    int hand1Rank = deck[4] / (int)SUITS::NUM;
-    int hand1Suit = deck[4] % (int)SUITS::NUM;
+    int flop0Rank = flop0 / (int)SUITS::NUM;
+    int flop0Suit = flop0 % (int)SUITS::NUM;
+    int flop1Rank = flop1 / (int)SUITS::NUM;
+    int flop1Suit = flop1 % (int)SUITS::NUM;
+    int flop2Rank = flop2 / (int)SUITS::NUM;
+    int flop2Suit = flop2 % (int)SUITS::NUM;
+    int hand0Rank = hand0 / (int)SUITS::NUM;
+    int hand0Suit = hand0 % (int)SUITS::NUM;
+    int hand1Rank = hand1 / (int)SUITS::NUM;
+    int hand1Suit = hand1 % (int)SUITS::NUM;
 
-    if (handValue >= STRAIGHT || holeCardsMatchingBoard > 0)
-    {
-        return ACTIONS::BET;
-    }
-
-    // any pocket pair
-    if (hand0Rank == hand1Rank)
+    if (handValue >= STRAIGHT || holeCardsMatchingBoard > 0 || hand0Rank == hand1Rank)
     {
         return ACTIONS::BET;
     }
     
     // A high
-    if (CountHighCardRanksBelowHighest(deck) <= 0)
+    if (CountHighCardRanksBelowHighest(flop0, flop1, flop2, hand0, hand1) <= 0)
     {
         return ACTIONS::BET;
     }
 
-    if (CheckForBluffCatcher(deck))
+    if (CheckForBluffCatcherOOP(flop0, flop1, flop2, hand0, hand1))
     {
         return ACTIONS::PASS;
     }
     
-    int frontDoorFlushSuit = -1;
-    if (flop0Suit == flop1Suit) frontDoorFlushSuit = flop0Suit;
-    else if (flop0Suit == flop2Suit) frontDoorFlushSuit = flop0Suit;
-    else if (flop1Suit == flop2Suit) frontDoorFlushSuit = flop1Suit;
-
+//    int frontDoorFlushSuit = -1;
+//    if (flop0Suit == flop1Suit) frontDoorFlushSuit = flop0Suit;
+//    else if (flop0Suit == flop2Suit) frontDoorFlushSuit = flop0Suit;
+//    else if (flop1Suit == flop2Suit) frontDoorFlushSuit = flop1Suit;
+//
     // front door flush draws
 //    if (hand0Suit == hand1Suit &&
 //        hand0Suit == frontDoorFlushSuit)
@@ -1313,7 +1315,7 @@ ACTIONS GetDealerFixedStrategyActionFirstToAct(int deck[])
     }
 
     // any gutshot or better straight draws that both hole cards contribute to
-    if (CheckForStraightDraws(deck))
+    if (CheckForStraightDraws(flop0, flop1, flop2, hand0, hand1))
     {
         return ACTIONS::BET;
     }
@@ -1369,19 +1371,107 @@ ACTIONS GetDealerFixedStrategyActionFirstToAct(int deck[])
     return ACTIONS::PASS;
 }
 
-ACTIONS GetDealerFixedStrategyActionWhenBetTo(int deck[])
+ACTIONS GetOOPFixedStrategyActionWhenBetTo(int deck[])
 {
-    if (CheckForBluffCatcher(deck))
+    if (CheckForBluffCatcherOOP(deck[0], deck[1], deck[2], deck[3], deck[4]))
     {
         return ACTIONS::BET;
     }
 
     int holeCardsMatchingBoard, handValue;
-    GetHandInfo(deck, holeCardsMatchingBoard, handValue);
+    GetHandInfo(deck[0], deck[1], deck[2], deck[3], deck[4], holeCardsMatchingBoard, handValue);
     if (handValue >= STRAIGHT || holeCardsMatchingBoard > 0)
     {
         return ACTIONS::BET;
     }
+    return ACTIONS::PASS;
+}
+
+ACTIONS GetIPFixedStrategyActionWhenCheckedTo(int deck[])
+{
+    int flop0 = deck[0];
+    int flop1 = deck[1];
+    int flop2 = deck[2];
+    int hand0 = deck[5];
+    int hand1 = deck[6];
+    
+    int holeCardsMatchingBoard, handValue;
+    GetHandInfo(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handValue);
+    
+    int flop0Rank = flop0 / (int)SUITS::NUM;
+    int flop0Suit = flop0 % (int)SUITS::NUM;
+    int flop1Rank = flop1 / (int)SUITS::NUM;
+    int flop1Suit = flop1 % (int)SUITS::NUM;
+    int flop2Rank = flop2 / (int)SUITS::NUM;
+    int flop2Suit = flop2 % (int)SUITS::NUM;
+    int hand0Rank = hand0 / (int)SUITS::NUM;
+    int hand0Suit = hand0 % (int)SUITS::NUM;
+    int hand1Rank = hand1 / (int)SUITS::NUM;
+    int hand1Suit = hand1 % (int)SUITS::NUM;
+
+    if (handValue >= STRAIGHT || holeCardsMatchingBoard > 0 || hand0Rank == hand1Rank)
+    {
+        return ACTIONS::BET;
+    }
+
+    // A high or K high
+    if (CountHighCardRanksBelowHighest(flop0, flop1, flop2, hand0, hand1) <= 1)
+    {
+        return ACTIONS::BET;
+    }
+    
+    // if both pocket cards are the same suit, if they match any suit on the board (flush draw)
+    if (hand0Suit == hand1Suit &&
+        (hand0Suit == flop0Suit ||
+         hand0Suit == flop1Suit ||
+         hand0Suit == flop2Suit))
+    {
+        return ACTIONS::BET;
+    }
+
+    // any gutshot or better straight draws that both hole cards contribute to
+    if (CheckForStraightDraws(flop0, flop1, flop2, hand0, hand1))
+    {
+        return ACTIONS::BET;
+    }
+    
+
+    return ACTIONS::PASS;
+}
+
+ACTIONS GetIPFixedStrategyActionWhenBetTo(int deck[])
+{
+    int flop0 = deck[0];
+    int flop1 = deck[1];
+    int flop2 = deck[2];
+    int hand0 = deck[5];
+    int hand1 = deck[6];
+    
+    int holeCardsMatchingBoard, handValue;
+    GetHandInfo(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handValue);
+    
+    int flop0Rank = flop0 / (int)SUITS::NUM;
+    int flop0Suit = flop0 % (int)SUITS::NUM;
+    int flop1Rank = flop1 / (int)SUITS::NUM;
+    int flop1Suit = flop1 % (int)SUITS::NUM;
+    int flop2Rank = flop2 / (int)SUITS::NUM;
+    int flop2Suit = flop2 % (int)SUITS::NUM;
+    int hand0Rank = hand0 / (int)SUITS::NUM;
+    int hand0Suit = hand0 % (int)SUITS::NUM;
+    int hand1Rank = hand1 / (int)SUITS::NUM;
+    int hand1Suit = hand1 % (int)SUITS::NUM;
+
+    if (handValue >= STRAIGHT || holeCardsMatchingBoard > 0 || hand0Rank == hand1Rank)
+    {
+        return ACTIONS::BET;
+    }
+
+    // A high or K high or Q high
+    if (CountHighCardRanksBelowHighest(flop0, flop1, flop2, hand0, hand1) <= 2)
+    {
+        return ACTIONS::BET;
+    }
+    
     return ACTIONS::PASS;
 }
 
@@ -1444,14 +1534,14 @@ public:
             }
         }
         
-        if (DEALER_USES_FIXED_STRATEGY_FIRST_TO_ACT && player == 0 && plays == 0)
+        if (OOP_USES_FIXED_STRATEGY_FIRST_TO_ACT && player == 0 && plays == 0)
         {
-            ACTIONS action = GetDealerFixedStrategyActionFirstToAct(deck);
+            ACTIONS action = GetOOPFixedStrategyActionFirstToAct(deck);
             string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
             double ev = - CFR(deck, nextHistory, probability0, probability1);
             return ev;
         }
-        else if (DEALER_USES_HARD_CODED_HANDS_STRATEGY_FIRST_TO_ACT && player == 0 && plays == 0)
+        else if (OOP_USES_HARD_CODED_HANDS_STRATEGY_FIRST_TO_ACT && player == 0 && plays == 0)
         {
             string infoSet = ConstructInfoSet(deck[0], deck[1], deck[2], deck[3 + player * 2], deck[4 + player * 2], history);
             string hand = infoSet.substr(6, 4);
@@ -1466,15 +1556,29 @@ public:
             double ev = - CFR(deck, nextHistory, probability0, probability1);
             return ev;
         }
-        else if (DEALER_ALWAYS_CHECKS_FIRST_TO_ACT && player == 0 && plays == 0)
+        else if (OOP_ALWAYS_CHECKS_FIRST_TO_ACT && player == 0 && plays == 0)
         {
             string nextHistory = history + "p";
             double ev = - CFR(deck, nextHistory, probability0, probability1);
             return ev;
         }
-        else if (DEALER_USES_FIXED_STRATEGY_WHEN_BET_TO && player == 0 && plays == 2)
+        else if (OOP_USES_FIXED_STRATEGY_WHEN_BET_TO && player == 0 && plays == 2)
         {
-            ACTIONS action = GetDealerFixedStrategyActionWhenBetTo(deck);
+            ACTIONS action = GetOOPFixedStrategyActionWhenBetTo(deck);
+            string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
+            double ev = - CFR(deck, nextHistory, probability0, probability1);
+            return ev;
+        }
+        else if (IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO && player == 1)
+        {
+            ACTIONS action = GetIPFixedStrategyActionWhenCheckedTo(deck);
+            string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
+            double ev = - CFR(deck, nextHistory, probability0, probability1);
+            return ev;
+        }
+        else if (IP_USES_FIXED_STRATEGY_WHEN_BET_TO && player == 1)
+        {
+            ACTIONS action = GetIPFixedStrategyActionWhenBetTo(deck);
             string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
             double ev = - CFR(deck, nextHistory, probability0, probability1);
             return ev;

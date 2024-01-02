@@ -72,9 +72,35 @@ const vector<string> strategyActionStrings = {
     "NOT_A_ROOT_NODE",
 };
 
+enum class HAND_CATEGORY
+{
+    STRAIGHT_FLUSH,
+    QUADS,
+    BOAT,
+    FLUSH,
+    STRAIGHT,
+    THREE_OF_A_KIND,
+    TWO_PAIR,
+    PAIR,
+    HIGH_CARD,
+    NUM
+};
+
+const vector<string> handCategoryStrings = {
+    "STRAIGHT_FLUSH",
+    "QUADS",
+    "BOAT",
+    "FLUSH",
+    "STRAIGHT",
+    "THREE_OF_A_KIND",
+    "TWO_PAIR",
+    "PAIR",
+    "HIGH_CARD",
+};
+
 // -0.07015, -0.07078 for 40,000,000 iterations for default fixed strategy
 
-const int NUM_ITERATIONS = 10000000;
+const int NUM_ITERATIONS = 100000;
 const int BET_AMOUNT = 2;
 const bool HARD_CODE_FLOP = true;
 
@@ -846,7 +872,7 @@ int StringToCard(string card)
     return rank * (int)SUITS::NUM + suit;
 }
 
-string InfoSetToHandType(string infoSet)
+HAND_CATEGORY InfoSetToHandCategory(string infoSet)
 {
     Hand hand = Hand::empty();
     hand += StringToCard(infoSet.substr(0,2));
@@ -857,38 +883,38 @@ string InfoSetToHandType(string infoSet)
     uint16_t handValue = handEvaluator.evaluate(hand);
     if (handValue >= STRAIGHT_FLUSH)
     {
-        return "straight flush";
+        return HAND_CATEGORY::STRAIGHT_FLUSH;
     }
     if (handValue >= FOUR_OF_A_KIND)
     {
-        return "quads";
+        return HAND_CATEGORY::QUADS;
     }
     if (handValue >= FULL_HOUSE)
     {
-        return "boat";
+        return HAND_CATEGORY::BOAT;
     }
     if (handValue >= FLUSH)
     {
-        return "flush";
+        return HAND_CATEGORY::FLUSH;
     }
     if (handValue >= STRAIGHT)
     {
-        return "straight";
+        return HAND_CATEGORY::STRAIGHT;
     }
     if (handValue >= THREE_OF_A_KIND)
     {
-        return "three of a kind";
+        return HAND_CATEGORY::THREE_OF_A_KIND;
     }
     if (handValue >= TWO_PAIR)
     {
-        return "two pair";
+        return HAND_CATEGORY::TWO_PAIR;
     }
     if (handValue >= PAIR)
     {
-        return "pair";
+        return HAND_CATEGORY::PAIR;
     }
     //todo: draws
-    return "high card";
+    return HAND_CATEGORY::HIGH_CARD;
 }
 
 
@@ -1712,39 +1738,43 @@ public:
         return STRATEGY_ACTIONS::NOT_A_ROOT_NODE;
     }
     
-    void PrintActions(const map<string, Node, pokerStringCompare> &sortedNodes, STRATEGY_ACTIONS actionToPrint)
+    void PrintActions(const map<string, Node, pokerStringCompare> &sortedNodes)
     {
-        std::cout << "\n\naction: " << strategyActionStrings[(int)actionToPrint] << "\n\n";
+        bool needComma = false;
         for (const auto & [ key, node ] : sortedNodes)
         {
             double percentage, secondaryPercentage;
             STRATEGY_ACTIONS strategyAction = GetStrategyActionFromNode(sortedNodes, key, node, percentage, secondaryPercentage);
 
-            if (strategyAction == actionToPrint)
+            if (needComma)
             {
-                string hand = key.substr(7, 5);
-                if (secondaryPercentage >= 0)
-                {
-                    std::cout <<
-                        hand << " " <<
-                        std::round(percentage * 1000.0) / 1000.0 << " " <<
-                        std::round(secondaryPercentage * 1000.0) / 1000.0 << " " << InfoSetToHandType(node.infoSet) <<
-                        "\n";
-                }
-                else
-                {
-                    std::cout <<
-                        hand << " " <<
-                        std::round(percentage * 1000.0) / 1000.0 << " " << InfoSetToHandType(node.infoSet) <<
-                        "\n";
-                }
+                std::cout << ",\n";
             }
+            string hand = key.substr(7, 5);
+            if (secondaryPercentage >= 0)
+            {
+                std::cout << "\"" <<
+                    hand << " " <<
+                    std::round(percentage * 1000.0) / 1000.0 << " " <<
+                    std::round(secondaryPercentage * 1000.0) / 1000.0 <<
+                    "\"";
+            }
+            else
+            {
+                std::cout << "\"" <<
+                    hand << " " <<
+                    std::round(percentage * 1000.0) / 1000.0 <<
+                    "\"";
+            }
+            needComma = true;
         }
     }
     
     void Print()
     {
         map<string, Node, pokerStringCompare> sortedNodes;
+        map<STRATEGY_ACTIONS, map<HAND_CATEGORY, map<string, Node, pokerStringCompare> > > nodesPerSpot;
+        
         for (const auto & [ key, node ] : nodes)
         {
             string flop = node.infoSet.substr(0, 6);
@@ -1772,17 +1802,46 @@ public:
             sortedNodes.insert({humanReadableInfoSet, node});
         }
         
+        for (const auto & [ key, node ] : sortedNodes)
+        {
+            double percentage, secondaryPercentage;
+            STRATEGY_ACTIONS strategyAction = GetStrategyActionFromNode(sortedNodes, key, node, percentage, secondaryPercentage);
+            
+            HAND_CATEGORY handCategory = InfoSetToHandCategory(node.infoSet);
+            nodesPerSpot[strategyAction][handCategory].insert({key, node});
+        }
+
         string firstInfoSet = sortedNodes.begin()->first;
         string flop = firstInfoSet.substr(0, 7);
-        std::cout << "flop: \n" << flop << "\n\n";
+        std::cout << "\"flop\": \"" << flop << "\",\n\n";
 
-        PrintActions(sortedNodes, STRATEGY_ACTIONS::OOP_BET);
-        PrintActions(sortedNodes, STRATEGY_ACTIONS::OOP_CHECK_CALL);
-        PrintActions(sortedNodes, STRATEGY_ACTIONS::OOP_CHECK_FOLD);
-        PrintActions(sortedNodes, STRATEGY_ACTIONS::IP_CALL);
-        PrintActions(sortedNodes, STRATEGY_ACTIONS::IP_FOLD);
-        PrintActions(sortedNodes, STRATEGY_ACTIONS::IP_BET);
-        PrintActions(sortedNodes, STRATEGY_ACTIONS::IP_CHECK_BACK);
+        std::cout << "\"actions\":{";
+        bool needsCommaOuter = false;
+        for (int action = 0; action < (int)STRATEGY_ACTIONS::NOT_A_ROOT_NODE; action++)
+        {
+            if (needsCommaOuter)
+            {
+                std::cout << ",\n";
+            }
+            std::cout << "\n\n\"" << strategyActionStrings[(int)action] << "\": {\n\n";
+
+            auto nodesPerHandCategory = nodesPerSpot[(STRATEGY_ACTIONS)action];
+            bool needsComma = false;
+            for (const auto & [ handCategory, nodesForThisHandCategory ] : nodesPerHandCategory)
+            {
+                if (needsComma)
+                {
+                    std::cout << ",\n";
+                }
+                std::cout << "\"" << handCategoryStrings[(int)handCategory] << "\":[\n";
+                PrintActions(nodesForThisHandCategory);
+                std::cout << "\n]";
+                needsComma = true;
+            }
+            std::cout << "\n}\n";
+            needsCommaOuter = true;
+        }
+        std::cout << "}\n\n";
     }
     
     void Solve()
@@ -1814,11 +1873,12 @@ public:
         }
         ev /= (NUM_ITERATIONS/2);
 
-        std::cout << "\n\nIterations: " << NUM_ITERATIONS << "\nTotal ev: " << ev << "\n";
+        std::cout << "\n{\n\"Iterations\": " << NUM_ITERATIONS << ",\n\"Total ev\": " << ev << ",\n";
         if (PRINT_IT)
         {
             Print();
         }
+        std::cout << "}\n";
     }
 };
 

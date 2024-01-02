@@ -72,35 +72,101 @@ const vector<string> strategyActionStrings = {
     "NOT_A_ROOT_NODE",
 };
 
+enum class STRAIGHT_DRAW_CATEGORY
+{
+    GUTSHOT_INCLUDING_HOLE_CARDS,
+    OPEN_ENDED_INCLUDING_HOLE_CARDS,
+    DOUBLE_GUTSHOT_INCLUDING_HOLE_CARDS,
+    NONE,
+};
+
+enum class FLUSH_DRAW_CATEGORY
+{
+    BACK_DOOR_INCLUDING_HOLE_CARDS,
+    FRONT_DOOR_INCLUDING_HOLE_CARDS,
+    NONE,
+};
+
 enum class HAND_CATEGORY
 {
-    STRAIGHT_FLUSH,
-    QUADS,
-    BOAT,
-    FLUSH,
+    HIGH_CARD = 0,
+    PAIR_ON_BOARD,
+    POCKET_PAIR,
+    PAIR_WITH_ONE_CARD_IN_HAND,
+    TWO_PAIR_WITH_POCKET_PAIR,
+    TWO_PAIR_ONE_ON_HOLE,
+    TWO_PAIR_BOTH_IN_HOLE,
+    BOARD_TRIPS,
+    TRIPS,
+    SET,
     STRAIGHT,
-    THREE_OF_A_KIND,
-    TWO_PAIR,
-    PAIR,
-    HIGH_CARD,
+    FLUSH,
+    BOAT,
+    QUADS,
+    STRAIGHT_FLUSH,
     NUM
 };
 
-const vector<string> handCategoryStrings = {
-    "STRAIGHT_FLUSH",
-    "QUADS",
-    "BOAT",
-    "FLUSH",
-    "STRAIGHT",
-    "THREE_OF_A_KIND",
-    "TWO_PAIR",
-    "PAIR",
-    "HIGH_CARD",
-};
+string CategoriesToString(HAND_CATEGORY handCategory, STRAIGHT_DRAW_CATEGORY straightDrawCategory, FLUSH_DRAW_CATEGORY flushDrawCategory)
+{
+    switch(handCategory)
+    {
+        case HAND_CATEGORY::STRAIGHT_FLUSH:
+            return "STRAIGHT_FLUSH";
+        case HAND_CATEGORY::QUADS:
+            return "QUADS";
+        case HAND_CATEGORY::BOAT:
+            return "BOAT";
+        case HAND_CATEGORY::FLUSH:
+            return "FLUSH";
+        case HAND_CATEGORY::STRAIGHT:
+            return "STRAIGHT";
+        case HAND_CATEGORY::SET:
+            return "SET";
+        case HAND_CATEGORY::TRIPS:
+            return "TRIPS";
+//        case HAND_CATEGORY::BOARD_TRIPS:
+//            return "BOARD_TRIPS";
+        case HAND_CATEGORY::TWO_PAIR_BOTH_IN_HOLE:
+            return "TWO_PAIR_BOTH_IN_HOLE";
+        case HAND_CATEGORY::TWO_PAIR_ONE_ON_HOLE:
+            return "TWO_PAIR_ONE_ON_HOLE";
+        case HAND_CATEGORY::TWO_PAIR_WITH_POCKET_PAIR:
+            return "TWO_PAIR_WITH_POCKET_PAIR";
+        case HAND_CATEGORY::PAIR_WITH_ONE_CARD_IN_HAND:
+            return "PAIR_WITH_ONE_CARD_IN_HAND";
+        case HAND_CATEGORY::POCKET_PAIR:
+            return "POCKET_PAIR";
+//        case HAND_CATEGORY::PAIR_ON_BOARD:
+//            return "PAIR_ON_BOARD";
+        default:
+        {
+            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_INCLUDING_HOLE_CARDS)
+            {
+                return "OPEN_ENDED";
+            }
+            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::DOUBLE_GUTSHOT_INCLUDING_HOLE_CARDS)
+            {
+                return "DOUBLE_GUTTER";
+            }
+            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::GUTSHOT_INCLUDING_HOLE_CARDS)
+            {
+                return "GUTSHOT";
+            }
+            if (flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_INCLUDING_HOLE_CARDS)
+            {
+                return "FRONT_DOOR";
+            }
+            if (flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_INCLUDING_HOLE_CARDS)
+            {
+                return "BACK_DOOR";
+            }
+            return "HIGH_CARD";
+        }
+    }
+}
 
-// -0.07015, -0.07078 for 40,000,000 iterations for default fixed strategy
-
-const int NUM_ITERATIONS = 100000;
+const int NUM_ITERATIONS = 1000000;
 const int BET_AMOUNT = 2;
 const bool HARD_CODE_FLOP = true;
 
@@ -133,17 +199,14 @@ const int HARD_CODE_FLOP2 = (int)RANKS::THREE * (int)SUITS::NUM + (int)SUITS::DI
 //const int HARD_CODE_FLOP1 = (int)RANKS::NINE * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
 //const int HARD_CODE_FLOP2 = (int)RANKS::Q * (int)SUITS::NUM + (int)SUITS::HEARTS;
 
-// fixed strategy: .062
-// gto: .025
-// gto first to act, fixed when bet to: .026
-// gto when bet to, fixed when first to act: .057
-
 const bool OOP_USES_FIXED_STRATEGY_FIRST_TO_ACT = false;
 const bool OOP_USES_HARD_CODED_HANDS_STRATEGY_FIRST_TO_ACT = false;
 const bool OOP_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
 const bool OOP_ALWAYS_CHECKS_FIRST_TO_ACT = false;
+
 const bool IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO = false;
 const bool IP_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
+
 const bool CAN_SLOW_PLAY = true;
 const bool PRINT_IT = true;
 
@@ -617,12 +680,6 @@ set<string> hardCodedHands = {
     "AzKw",
 };
 
-// how can I visualize this better?
-// put hands into categories - quads, pair, gutshot, etc.
-// if possible, separate the bets into bluff and value.  maybe bluffs are 9 high and lower.  or where the ev on check/check is low
-// put it into a 13x13 matrix.  maybe export in some format and load in GTOWizard
-
-
 HandEvaluator handEvaluator;
 
 class Node
@@ -872,50 +929,116 @@ int StringToCard(string card)
     return rank * (int)SUITS::NUM + suit;
 }
 
-HAND_CATEGORY InfoSetToHandCategory(string infoSet)
+STRAIGHT_DRAW_CATEGORY CheckForStraightDraws(int flop0, int flop1, int flop2, int hand0, int hand1)
 {
-    Hand hand = Hand::empty();
-    hand += StringToCard(infoSet.substr(0,2));
-    hand += StringToCard(infoSet.substr(2,2));
-    hand += StringToCard(infoSet.substr(4,2));
-    hand += StringToCard(infoSet.substr(6,2));
-    hand += StringToCard(infoSet.substr(8,2));
-    uint16_t handValue = handEvaluator.evaluate(hand);
-    if (handValue >= STRAIGHT_FLUSH)
+    int flop0Rank = flop0 / (int)SUITS::NUM;
+    int flop1Rank = flop1 / (int)SUITS::NUM;
+    int flop2Rank = flop2 / (int)SUITS::NUM;
+    int hand0Rank = hand0 / (int)SUITS::NUM;
+    int hand1Rank = hand1 / (int)SUITS::NUM;
+
+    bool rankExists[13];
+    for (int i = 0; i < 13; i++)
     {
-        return HAND_CATEGORY::STRAIGHT_FLUSH;
+        rankExists[i] = false;
     }
-    if (handValue >= FOUR_OF_A_KIND)
+
+    rankExists[flop0Rank] = true;
+    rankExists[flop1Rank] = true;
+    rankExists[flop2Rank] = true;
+    rankExists[hand0Rank] = true;
+    rankExists[hand1Rank] = true;
+    
+    0b1011101;
+    
+    for (int i = 0; i < 9; i++)
     {
-        return HAND_CATEGORY::QUADS;
+        int existingRanksForStraightStartingHere = 0;
+        if (rankExists[i]) existingRanksForStraightStartingHere++;
+        if (rankExists[i+1]) existingRanksForStraightStartingHere++;
+        if (rankExists[i+2]) existingRanksForStraightStartingHere++;
+        if (rankExists[i+3]) existingRanksForStraightStartingHere++;
+        if (rankExists[i+4]) existingRanksForStraightStartingHere++;
+        if (existingRanksForStraightStartingHere == 4)
+        {
+            // make sure both hole cards contribute
+            if (hand0Rank >= i && hand0Rank <= i + 4 &&
+              hand1Rank >= i && hand1Rank <= i + 4)
+            {
+                if (!rankExists[i+1] ||
+                    !rankExists[i+2] ||
+                    !rankExists[i+3])
+                {
+                    return STRAIGHT_DRAW_CATEGORY::GUTSHOT_INCLUDING_HOLE_CARDS;
+                }
+                else if (!rankExists[i])
+                {
+                    if (i == (int)RANKS::TEN)
+                    {
+                        return STRAIGHT_DRAW_CATEGORY::GUTSHOT_INCLUDING_HOLE_CARDS;
+                    }
+                    else
+                    {
+                        return STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_INCLUDING_HOLE_CARDS;
+                    }
+                }
+                else
+                {
+                    return STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_INCLUDING_HOLE_CARDS;
+                }
+            }
+        }
     }
-    if (handValue >= FULL_HOUSE)
+    
+    // check for wheel
+    if (rankExists[(int)RANKS::A])
     {
-        return HAND_CATEGORY::BOAT;
+        int existingRanksForStraightStartingHere = 1;
+        if (rankExists[0]) existingRanksForStraightStartingHere++;
+        if (rankExists[1]) existingRanksForStraightStartingHere++;
+        if (rankExists[2]) existingRanksForStraightStartingHere++;
+        if (rankExists[3]) existingRanksForStraightStartingHere++;
+        if (existingRanksForStraightStartingHere == 4)
+        {
+            // make sure both hold cards contribute
+            if ((hand0Rank == (int)RANKS::A || (hand0Rank >= 0 && hand0Rank <= 3)) &&
+                (hand1Rank == (int)RANKS::A || (hand1Rank >= 0 && hand1Rank <= 3)))
+            {
+                return STRAIGHT_DRAW_CATEGORY::GUTSHOT_INCLUDING_HOLE_CARDS;
+            }
+        }
     }
-    if (handValue >= FLUSH)
-    {
-        return HAND_CATEGORY::FLUSH;
-    }
-    if (handValue >= STRAIGHT)
-    {
-        return HAND_CATEGORY::STRAIGHT;
-    }
-    if (handValue >= THREE_OF_A_KIND)
-    {
-        return HAND_CATEGORY::THREE_OF_A_KIND;
-    }
-    if (handValue >= TWO_PAIR)
-    {
-        return HAND_CATEGORY::TWO_PAIR;
-    }
-    if (handValue >= PAIR)
-    {
-        return HAND_CATEGORY::PAIR;
-    }
-    //todo: draws
-    return HAND_CATEGORY::HIGH_CARD;
+    
+    return STRAIGHT_DRAW_CATEGORY::NONE;
 }
+
+FLUSH_DRAW_CATEGORY CheckForFlushDraws(int flop0, int flop1, int flop2, int hand0, int hand1)
+{
+    int flop0Suit = flop0 % (int)SUITS::NUM;
+    int flop1Suit = flop1 % (int)SUITS::NUM;
+    int flop2Suit = flop2 % (int)SUITS::NUM;
+    int hand0Suit = hand0 % (int)SUITS::NUM;
+    int hand1Suit = hand1 % (int)SUITS::NUM;
+    
+    if (hand0Suit == hand1Suit)
+    {
+        int boardMatchedSuit = 0;
+        
+        if (hand0Suit == flop0Suit) boardMatchedSuit++;
+        if (hand0Suit == flop1Suit) boardMatchedSuit++;
+        if (hand0Suit == flop2Suit) boardMatchedSuit++;
+        if (boardMatchedSuit == 2)
+        {
+            return FLUSH_DRAW_CATEGORY::FRONT_DOOR_INCLUDING_HOLE_CARDS;
+        }
+        else if (boardMatchedSuit == 1)
+        {
+            return FLUSH_DRAW_CATEGORY::BACK_DOOR_INCLUDING_HOLE_CARDS;
+        }
+    }
+    return FLUSH_DRAW_CATEGORY::NONE;
+}
+
 
 
 // 0 is draw.  1 means player 0 wins.  -1 means player 1 wins
@@ -1135,87 +1258,7 @@ bool CheckForBluffCatcherOOP(int flop0, int flop1, int flop2, int hand0, int han
     return (CountHighCardRanksBelowHighest(flop0, flop1, flop2, hand0, hand1) <= 1);
 }
 
-bool CheckForStraightDraws(int flop0, int flop1, int flop2, int hand0, int hand1)
-{
-    int flop0Rank = flop0 / (int)SUITS::NUM;
-    int flop1Rank = flop1 / (int)SUITS::NUM;
-    int flop2Rank = flop2 / (int)SUITS::NUM;
-    int hand0Rank = hand0 / (int)SUITS::NUM;
-    int hand1Rank = hand1 / (int)SUITS::NUM;
-
-    bool rankExists[13];
-    for (int i = 0; i < 13; i++)
-    {
-        rankExists[i] = false;
-    }
-
-    rankExists[flop0Rank] = true;
-    rankExists[flop1Rank] = true;
-    rankExists[flop2Rank] = true;
-    rankExists[hand0Rank] = true;
-    rankExists[hand1Rank] = true;
-    
-//    double straightOuts = 0;
-//    looking into bluffing with x outs or more, contributed to by, eg, backdoor straight draws
-//    I could ... try making the dealer do exactly the strategy that came out of the solver by making a table
-//    then make sure that still gets around 2%.  done.
-//    Then come up with ways to make the algorithm gradually get closer to that solution without hard-coding it.
-    
-    // I'd like to see in the output, per line, the type of hand.
-    // kinds of value hands:
-    // quads, flush, straight, three of a kind, two pair, over pair, under pair, pocket pair over middle, under middle,
-    // top pair, middle pair. high card top, high card second top
-    // kinda of bluffs:
-    // types of straight draws: open ended (or double gutshot) two cards, gutshot two cards, backdoor straight 3,2,1, one card stuff - dont worry now
-    // types of flush draws: front door flush (two cards), back door flush (two card), one cards stuff - dont worry now?
-    // overcard, over to middle, over to bottom, this is per card in hand
-    
-    // this could all be used to come up with a "bluff score".  each type of flop can have a threshold score to bluff
-    // though I want a simple strategy.  I really want to see what I'm doing wrong and come up with the best simple strategy.
-    
-
-    for (int i = 0; i < 9; i++)
-    {
-        int existingRanksForStraightStartingHere = 0;
-        if (rankExists[i]) existingRanksForStraightStartingHere++;
-        if (rankExists[i+1]) existingRanksForStraightStartingHere++;
-        if (rankExists[i+2]) existingRanksForStraightStartingHere++;
-        if (rankExists[i+3]) existingRanksForStraightStartingHere++;
-        if (rankExists[i+4]) existingRanksForStraightStartingHere++;
-        if (existingRanksForStraightStartingHere == 4)
-        {
-            // make sure both hole cards contribute
-            if (hand0Rank >= i && hand0Rank <= i + 4 &&
-              hand1Rank >= i && hand1Rank <= i + 4)
-            {
-                return true;
-            }
-        }
-    }
-    
-    // check for wheel
-    if (rankExists[(int)RANKS::A])
-    {
-        int existingRanksForStraightStartingHere = 1;
-        if (rankExists[0]) existingRanksForStraightStartingHere++;
-        if (rankExists[1]) existingRanksForStraightStartingHere++;
-        if (rankExists[2]) existingRanksForStraightStartingHere++;
-        if (rankExists[3]) existingRanksForStraightStartingHere++;
-        if (existingRanksForStraightStartingHere == 4)
-        {
-            // make sure both hold cards contribute
-            if ((hand0Rank == (int)RANKS::A || (hand0Rank >= 0 && hand0Rank <= 3)) &&
-                (hand1Rank == (int)RANKS::A || (hand1Rank >= 0 && hand1Rank <= 3)))
-            {
-                return true;
-            }
-        }
-    }
-    
-    return false;
-}
-
-void GetHandInfo(int flop0, int flop1, int flop2, int hand0, int hand1, int &holeCardsMatchingBoard, int &handValue)
+void GetHandInfo(int flop0, int flop1, int flop2, int hand0, int hand1, int &holeCardsMatchingBoard, HAND_CATEGORY &handCategory, STRAIGHT_DRAW_CATEGORY &straightDrawCategory, FLUSH_DRAW_CATEGORY &flushDrawCategory, int &highCardRank)
 {
     int flop0Rank = flop0 / (int)SUITS::NUM;
     int flop1Rank = flop1 / (int)SUITS::NUM;
@@ -1236,15 +1279,91 @@ void GetHandInfo(int flop0, int flop1, int flop2, int hand0, int hand1, int &hol
     {
         holeCardsMatchingBoard++;
     }
+    
+    bool pocketPair = (hand0Rank == hand1Rank);
+
+    highCardRank = CountHighCardRanksBelowHighest(flop0, flop1, flop2, hand0, hand1);
 
     Hand hand = Hand::empty();
     hand += Hand(flop0) + Hand(flop1) + Hand(flop2) + Hand(hand0) + Hand(hand1);
 
-    handValue = handEvaluator.evaluate(hand);
+    uint16_t handValue = handEvaluator.evaluate(hand);
+    if (handValue >= STRAIGHT_FLUSH)
+    {
+        handCategory = HAND_CATEGORY::STRAIGHT_FLUSH;
+    }
+    else if (handValue >= FOUR_OF_A_KIND)
+    {
+        handCategory = HAND_CATEGORY::QUADS;
+    }
+    else if (handValue >= FULL_HOUSE)
+    {
+        handCategory = HAND_CATEGORY::BOAT;
+    }
+    else if (handValue >= FLUSH)
+    {
+        handCategory = HAND_CATEGORY::FLUSH;
+    }
+    else if (handValue >= STRAIGHT)
+    {
+        handCategory = HAND_CATEGORY::STRAIGHT;
+    }
+    else if (handValue >= THREE_OF_A_KIND)
+    {
+        if (holeCardsMatchingBoard == 2)
+        {
+            handCategory = HAND_CATEGORY::SET;
+        }
+        else if (holeCardsMatchingBoard == 1)
+        {
+            handCategory = HAND_CATEGORY::TRIPS;
+        }
+        else
+        {
+            handCategory = HAND_CATEGORY::BOARD_TRIPS;
+        }
+    }
+    else if (handValue >= TWO_PAIR)
+    {
+        if (holeCardsMatchingBoard == 2)
+        {
+            handCategory = HAND_CATEGORY::TWO_PAIR_BOTH_IN_HOLE;
+        }
+        else if (holeCardsMatchingBoard == 1)
+        {
+            handCategory = HAND_CATEGORY::TWO_PAIR_ONE_ON_HOLE;
+        }
+        else
+        {
+            handCategory = HAND_CATEGORY::TWO_PAIR_WITH_POCKET_PAIR;
+        }
+    }
+    else if (handValue >= PAIR)
+    {
+        if (pocketPair)
+        {
+            handCategory = HAND_CATEGORY::POCKET_PAIR;
+        }
+        else if (holeCardsMatchingBoard == 1)
+        {
+            handCategory = HAND_CATEGORY::PAIR_WITH_ONE_CARD_IN_HAND;
+        }
+        else if (holeCardsMatchingBoard == 0)
+        {
+            handCategory = HAND_CATEGORY::PAIR_ON_BOARD;
+        }
+    }
+    else
+    {
+        handCategory = HAND_CATEGORY::HIGH_CARD;
+    }
+
+    straightDrawCategory = CheckForStraightDraws(flop0, flop1, flop2, hand0, hand1);
+    flushDrawCategory = CheckForFlushDraws(flop0, flop1, flop2, hand0, hand1);
 }
 
 // slow play straight or higher or set
-bool CheckForSlowPlay(int flop0, int flop1, int flop2, int hand0, int hand1, int holeCardsMatchingBoard, int handValue)
+bool CheckForSlowPlay(int flop0, int flop1, int flop2, int hand0, int hand1, int holeCardsMatchingBoard, HAND_CATEGORY handCategory)
 {
     int hand0Rank = hand0 / (int)SUITS::NUM;
     int hand1Rank = hand1 / (int)SUITS::NUM;
@@ -1268,7 +1387,7 @@ bool CheckForSlowPlay(int flop0, int flop1, int flop2, int hand0, int hand1, int
         }
     }
 */
-    if (handValue >= STRAIGHT)
+    if (handCategory >= HAND_CATEGORY::STRAIGHT)
     {
         return true;
     }
@@ -1284,9 +1403,12 @@ ACTIONS GetOOPFixedStrategyActionFirstToAct(int deck[])
     int hand0 = deck[3];
     int hand1 = deck[4];
     
-    int holeCardsMatchingBoard, handValue;
-    GetHandInfo(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handValue);
-    if (CheckForSlowPlay(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handValue))
+    int holeCardsMatchingBoard, highCardRank;
+    HAND_CATEGORY handCategory;
+    STRAIGHT_DRAW_CATEGORY straightDrawCategory;
+    FLUSH_DRAW_CATEGORY flushDrawCategory;
+    GetHandInfo(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handCategory, straightDrawCategory, flushDrawCategory, highCardRank);
+    if (CheckForSlowPlay(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handCategory))
     {
         return ACTIONS::PASS;
     }
@@ -1302,13 +1424,13 @@ ACTIONS GetOOPFixedStrategyActionFirstToAct(int deck[])
     int hand1Rank = hand1 / (int)SUITS::NUM;
     int hand1Suit = hand1 % (int)SUITS::NUM;
 
-    if (handValue >= STRAIGHT || holeCardsMatchingBoard > 0 || hand0Rank == hand1Rank)
+    if (handCategory >= HAND_CATEGORY::STRAIGHT || holeCardsMatchingBoard > 0 || hand0Rank == hand1Rank)
     {
         return ACTIONS::BET;
     }
     
     // A high
-    if (CountHighCardRanksBelowHighest(flop0, flop1, flop2, hand0, hand1) <= 0)
+    if (highCardRank <= 0)
     {
         return ACTIONS::BET;
     }
@@ -1318,29 +1440,9 @@ ACTIONS GetOOPFixedStrategyActionFirstToAct(int deck[])
         return ACTIONS::PASS;
     }
     
-//    int frontDoorFlushSuit = -1;
-//    if (flop0Suit == flop1Suit) frontDoorFlushSuit = flop0Suit;
-//    else if (flop0Suit == flop2Suit) frontDoorFlushSuit = flop0Suit;
-//    else if (flop1Suit == flop2Suit) frontDoorFlushSuit = flop1Suit;
-//
-    // front door flush draws
-//    if (hand0Suit == hand1Suit &&
-//        hand0Suit == frontDoorFlushSuit)
-//    {
-//        return ACTIONS::BET;
-//    }
-
-    // if both pocket cards are the same suit, if they match any suit on the board (flush draw)
-    if (hand0Suit == hand1Suit &&
-        (hand0Suit == flop0Suit ||
-         hand0Suit == flop1Suit ||
-         hand0Suit == flop2Suit))
-    {
-        return ACTIONS::BET;
-    }
-
-    // any gutshot or better straight draws that both hole cards contribute to
-    if (CheckForStraightDraws(flop0, flop1, flop2, hand0, hand1))
+    if (straightDrawCategory != STRAIGHT_DRAW_CATEGORY::NONE ||
+        flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_INCLUDING_HOLE_CARDS ||
+        flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_INCLUDING_HOLE_CARDS)
     {
         return ACTIONS::BET;
     }
@@ -1403,9 +1505,12 @@ ACTIONS GetOOPFixedStrategyActionWhenBetTo(int deck[])
         return ACTIONS::BET;
     }
 
-    int holeCardsMatchingBoard, handValue;
-    GetHandInfo(deck[0], deck[1], deck[2], deck[3], deck[4], holeCardsMatchingBoard, handValue);
-    if (handValue >= STRAIGHT || holeCardsMatchingBoard > 0)
+    int holeCardsMatchingBoard, highCardRank;
+    HAND_CATEGORY handCategory;
+    STRAIGHT_DRAW_CATEGORY straightDrawCategory;
+    FLUSH_DRAW_CATEGORY flushDrawCategory;
+    GetHandInfo(deck[0], deck[1], deck[2], deck[3], deck[4], holeCardsMatchingBoard, handCategory, straightDrawCategory, flushDrawCategory, highCardRank);
+    if (handCategory >= HAND_CATEGORY::STRAIGHT || holeCardsMatchingBoard > 0)
     {
         return ACTIONS::BET;
     }
@@ -1419,47 +1524,37 @@ ACTIONS GetIPFixedStrategyActionWhenCheckedTo(int deck[])
     int flop2 = deck[2];
     int hand0 = deck[5];
     int hand1 = deck[6];
-    
-    int holeCardsMatchingBoard, handValue;
-    GetHandInfo(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handValue);
-    
-    int flop0Rank = flop0 / (int)SUITS::NUM;
     int flop0Suit = flop0 % (int)SUITS::NUM;
-    int flop1Rank = flop1 / (int)SUITS::NUM;
     int flop1Suit = flop1 % (int)SUITS::NUM;
-    int flop2Rank = flop2 / (int)SUITS::NUM;
     int flop2Suit = flop2 % (int)SUITS::NUM;
     int hand0Rank = hand0 / (int)SUITS::NUM;
     int hand0Suit = hand0 % (int)SUITS::NUM;
     int hand1Rank = hand1 / (int)SUITS::NUM;
     int hand1Suit = hand1 % (int)SUITS::NUM;
 
-    if (handValue >= STRAIGHT || holeCardsMatchingBoard > 0 || hand0Rank == hand1Rank)
+    int holeCardsMatchingBoard, highCardRank;
+    HAND_CATEGORY handCategory;
+    STRAIGHT_DRAW_CATEGORY straightDrawCategory;
+    FLUSH_DRAW_CATEGORY flushDrawCategory;
+    GetHandInfo(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handCategory, straightDrawCategory, flushDrawCategory, highCardRank);
+
+    if (handCategory >= HAND_CATEGORY::STRAIGHT || holeCardsMatchingBoard > 0 || hand0Rank == hand1Rank)
     {
         return ACTIONS::BET;
     }
 
     // A high or K high
-    if (CountHighCardRanksBelowHighest(flop0, flop1, flop2, hand0, hand1) <= 1)
+    if (highCardRank <= 1)
     {
         return ACTIONS::BET;
     }
     
-    // if both pocket cards are the same suit, if they match any suit on the board (flush draw)
-    if (hand0Suit == hand1Suit &&
-        (hand0Suit == flop0Suit ||
-         hand0Suit == flop1Suit ||
-         hand0Suit == flop2Suit))
+    if (straightDrawCategory != STRAIGHT_DRAW_CATEGORY::NONE ||
+        flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_INCLUDING_HOLE_CARDS ||
+        flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_INCLUDING_HOLE_CARDS)
     {
         return ACTIONS::BET;
     }
-
-    // any gutshot or better straight draws that both hole cards contribute to
-    if (CheckForStraightDraws(flop0, flop1, flop2, hand0, hand1))
-    {
-        return ACTIONS::BET;
-    }
-    
 
     return ACTIONS::PASS;
 }
@@ -1471,28 +1566,28 @@ ACTIONS GetIPFixedStrategyActionWhenBetTo(int deck[])
     int flop2 = deck[2];
     int hand0 = deck[5];
     int hand1 = deck[6];
-    
-    int holeCardsMatchingBoard, handValue;
-    GetHandInfo(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handValue);
-    
-    int flop0Rank = flop0 / (int)SUITS::NUM;
-    int flop0Suit = flop0 % (int)SUITS::NUM;
-    int flop1Rank = flop1 / (int)SUITS::NUM;
-    int flop1Suit = flop1 % (int)SUITS::NUM;
-    int flop2Rank = flop2 / (int)SUITS::NUM;
-    int flop2Suit = flop2 % (int)SUITS::NUM;
     int hand0Rank = hand0 / (int)SUITS::NUM;
-    int hand0Suit = hand0 % (int)SUITS::NUM;
     int hand1Rank = hand1 / (int)SUITS::NUM;
-    int hand1Suit = hand1 % (int)SUITS::NUM;
 
-    if (handValue >= STRAIGHT || holeCardsMatchingBoard > 0 || hand0Rank == hand1Rank)
+    int holeCardsMatchingBoard, highCardRank;
+    HAND_CATEGORY handCategory;
+    STRAIGHT_DRAW_CATEGORY straightDrawCategory;
+    FLUSH_DRAW_CATEGORY flushDrawCategory;
+    GetHandInfo(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handCategory, straightDrawCategory, flushDrawCategory, highCardRank);
+    
+    if (handCategory >= HAND_CATEGORY::STRAIGHT || holeCardsMatchingBoard > 0 || hand0Rank == hand1Rank)
+    {
+        return ACTIONS::BET;
+    }
+
+    if (straightDrawCategory != STRAIGHT_DRAW_CATEGORY::NONE ||
+        flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_INCLUDING_HOLE_CARDS)
     {
         return ACTIONS::BET;
     }
 
     // A high or K high or Q high
-    if (CountHighCardRanksBelowHighest(flop0, flop1, flop2, hand0, hand1) <= 2)
+    if (highCardRank <= 2)
     {
         return ACTIONS::BET;
     }
@@ -1590,14 +1685,14 @@ public:
             double ev = - CFR(deck, nextHistory, probability0, probability1);
             return ev;
         }
-        else if (IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO && player == 1)
+        else if (IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO && player == 1 && history == "p")
         {
             ACTIONS action = GetIPFixedStrategyActionWhenCheckedTo(deck);
             string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
             double ev = - CFR(deck, nextHistory, probability0, probability1);
             return ev;
         }
-        else if (IP_USES_FIXED_STRATEGY_WHEN_BET_TO && player == 1)
+        else if (IP_USES_FIXED_STRATEGY_WHEN_BET_TO && player == 1 && history == "b")
         {
             ACTIONS action = GetIPFixedStrategyActionWhenBetTo(deck);
             string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
@@ -1773,7 +1868,7 @@ public:
     void Print()
     {
         map<string, Node, pokerStringCompare> sortedNodes;
-        map<STRATEGY_ACTIONS, map<HAND_CATEGORY, map<string, Node, pokerStringCompare> > > nodesPerSpot;
+        map<STRATEGY_ACTIONS, map<string, map<string, Node, pokerStringCompare> > > nodesPerSpot;
         
         for (const auto & [ key, node ] : nodes)
         {
@@ -1807,8 +1902,18 @@ public:
             double percentage, secondaryPercentage;
             STRATEGY_ACTIONS strategyAction = GetStrategyActionFromNode(sortedNodes, key, node, percentage, secondaryPercentage);
             
-            HAND_CATEGORY handCategory = InfoSetToHandCategory(node.infoSet);
-            nodesPerSpot[strategyAction][handCategory].insert({key, node});
+            int flop0 = StringToCard(node.infoSet.substr(0,2));
+            int flop1 = StringToCard(node.infoSet.substr(2,2));
+            int flop2 = StringToCard(node.infoSet.substr(4,2));
+            int hand0 = StringToCard(node.infoSet.substr(6,2));
+            int hand1 = StringToCard(node.infoSet.substr(8,2));
+            int holeCardsMatchingBoard, highCardRank;
+            HAND_CATEGORY handCategory;
+            STRAIGHT_DRAW_CATEGORY straightDrawCategory;
+            FLUSH_DRAW_CATEGORY flushDrawCategory;
+            GetHandInfo(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handCategory, straightDrawCategory, flushDrawCategory, highCardRank);
+            string handCategoryString = CategoriesToString(handCategory, straightDrawCategory, flushDrawCategory);
+            nodesPerSpot[strategyAction][handCategoryString].insert({key, node});
         }
 
         string firstInfoSet = sortedNodes.begin()->first;
@@ -1825,15 +1930,15 @@ public:
             }
             std::cout << "\n\n\"" << strategyActionStrings[(int)action] << "\": {\n\n";
 
-            auto nodesPerHandCategory = nodesPerSpot[(STRATEGY_ACTIONS)action];
+            auto nodesPerHandCategoryString = nodesPerSpot[(STRATEGY_ACTIONS)action];
             bool needsComma = false;
-            for (const auto & [ handCategory, nodesForThisHandCategory ] : nodesPerHandCategory)
+            for (const auto & [ handCategoryString, nodesForThisHandCategory ] : nodesPerHandCategoryString)
             {
                 if (needsComma)
                 {
                     std::cout << ",\n";
                 }
-                std::cout << "\"" << handCategoryStrings[(int)handCategory] << "\":[\n";
+                std::cout << "\"" << handCategoryString << "\":[\n";
                 PrintActions(nodesForThisHandCategory);
                 std::cout << "\n]";
                 needsComma = true;

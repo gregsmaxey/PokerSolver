@@ -166,7 +166,7 @@ string CategoriesToString(HAND_CATEGORY handCategory, STRAIGHT_DRAW_CATEGORY str
     }
 }
 
-const int NUM_ITERATIONS = 1000000;
+const int NUM_ITERATIONS = 40000000;
 const int BET_AMOUNT = 2;
 const bool HARD_CODE_FLOP = true;
 
@@ -949,8 +949,6 @@ STRAIGHT_DRAW_CATEGORY CheckForStraightDraws(int flop0, int flop1, int flop2, in
     rankExists[hand0Rank] = true;
     rankExists[hand1Rank] = true;
     
-    0b1011101;
-    
     for (int i = 0; i < 9; i++)
     {
         int existingRanksForStraightStartingHere = 0;
@@ -1414,15 +1412,10 @@ ACTIONS GetOOPFixedStrategyActionFirstToAct(int deck[])
     }
     
     int flop0Rank = flop0 / (int)SUITS::NUM;
-    int flop0Suit = flop0 % (int)SUITS::NUM;
     int flop1Rank = flop1 / (int)SUITS::NUM;
-    int flop1Suit = flop1 % (int)SUITS::NUM;
     int flop2Rank = flop2 / (int)SUITS::NUM;
-    int flop2Suit = flop2 % (int)SUITS::NUM;
     int hand0Rank = hand0 / (int)SUITS::NUM;
-    int hand0Suit = hand0 % (int)SUITS::NUM;
     int hand1Rank = hand1 / (int)SUITS::NUM;
-    int hand1Suit = hand1 % (int)SUITS::NUM;
 
     if (handCategory >= HAND_CATEGORY::STRAIGHT || holeCardsMatchingBoard > 0 || hand0Rank == hand1Rank)
     {
@@ -1524,13 +1517,8 @@ ACTIONS GetIPFixedStrategyActionWhenCheckedTo(int deck[])
     int flop2 = deck[2];
     int hand0 = deck[5];
     int hand1 = deck[6];
-    int flop0Suit = flop0 % (int)SUITS::NUM;
-    int flop1Suit = flop1 % (int)SUITS::NUM;
-    int flop2Suit = flop2 % (int)SUITS::NUM;
     int hand0Rank = hand0 / (int)SUITS::NUM;
-    int hand0Suit = hand0 % (int)SUITS::NUM;
     int hand1Rank = hand1 / (int)SUITS::NUM;
-    int hand1Suit = hand1 % (int)SUITS::NUM;
 
     int holeCardsMatchingBoard, highCardRank;
     HAND_CATEGORY handCategory;
@@ -1839,7 +1827,7 @@ public:
         for (const auto & [ key, node ] : sortedNodes)
         {
             double percentage, secondaryPercentage;
-            STRATEGY_ACTIONS strategyAction = GetStrategyActionFromNode(sortedNodes, key, node, percentage, secondaryPercentage);
+            GetStrategyActionFromNode(sortedNodes, key, node, percentage, secondaryPercentage);
 
             if (needComma)
             {

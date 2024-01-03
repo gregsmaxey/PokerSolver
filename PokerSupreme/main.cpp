@@ -74,16 +74,20 @@ const vector<string> strategyActionStrings = {
 
 enum class STRAIGHT_DRAW_CATEGORY
 {
-    GUTSHOT_INCLUDING_HOLE_CARDS,
-    OPEN_ENDED_INCLUDING_HOLE_CARDS,
-    DOUBLE_GUTSHOT_INCLUDING_HOLE_CARDS,
-    NONE,
+    NONE = 0,
+    GUTSHOT_ONE_CARD,
+    GUTSHOT_TWO_CARD,
+    OPEN_ENDED_ONE_CARD,
+    DOUBLE_GUTSHOT_ONE_CARD,
+    OPEN_ENDED_TWO_CARD,
+    DOUBLE_GUTSHOT_TWO_CARD,
 };
 
 enum class FLUSH_DRAW_CATEGORY
 {
-    BACK_DOOR_INCLUDING_HOLE_CARDS,
-    FRONT_DOOR_INCLUDING_HOLE_CARDS,
+    BACK_DOOR_TWO_CARD,
+    FRONT_DOOR_TWO_CARD,
+    FRONT_DOOR_ONE_CARD,
     NONE,
 };
 
@@ -141,23 +145,47 @@ string CategoriesToString(HAND_CATEGORY handCategory, STRAIGHT_DRAW_CATEGORY str
 //            return "PAIR_ON_BOARD";
         default:
         {
-            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_INCLUDING_HOLE_CARDS)
+            if (flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_TWO_CARD)
             {
-                return "OPEN_ENDED";
+                return "FRONT_DOOR_TWO_CARD";
             }
-            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::DOUBLE_GUTSHOT_INCLUDING_HOLE_CARDS)
+            if (flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_ONE_CARD)
             {
-                return "DOUBLE_GUTTER";
+                return "FRONT_DOOR_ONE_CARD";
             }
-            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::GUTSHOT_INCLUDING_HOLE_CARDS)
+            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_TWO_CARD ||
+                straightDrawCategory == STRAIGHT_DRAW_CATEGORY::DOUBLE_GUTSHOT_TWO_CARD)
             {
-                return "GUTSHOT";
+                return "OPEN_ENDED_TWO_CARD";
             }
-            if (flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_INCLUDING_HOLE_CARDS)
+            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::GUTSHOT_TWO_CARD)
             {
-                return "FRONT_DOOR";
+                if (flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_TWO_CARD)
+                {
+                    return "GUTSHOT_TWO_CARD_WITH_BACK_DOOR";
+                }
+                else
+                {
+                    return "GUTSHOT_TWO_CARD";
+                }
             }
-            if (flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_INCLUDING_HOLE_CARDS)
+            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_ONE_CARD ||
+                straightDrawCategory == STRAIGHT_DRAW_CATEGORY::DOUBLE_GUTSHOT_ONE_CARD)
+            {
+                return "OPEN_ENDED_ONE_CARD";
+            }
+            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::GUTSHOT_ONE_CARD)
+            {
+                if (flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_TWO_CARD)
+                {
+                    return "GUTSHOT_ONE_CARD_WITH_BACK_DOOR";
+                }
+                else
+                {
+                    return "GUTSHOT_ONE_CARD";
+                }
+            }
+            if (flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_TWO_CARD)
             {
                 return "BACK_DOOR";
             }
@@ -166,13 +194,17 @@ string CategoriesToString(HAND_CATEGORY handCategory, STRAIGHT_DRAW_CATEGORY str
     }
 }
 
-const int NUM_ITERATIONS = 40000000;
+const int NUM_ITERATIONS = 10000000;
 const int BET_AMOUNT = 2;
 const bool HARD_CODE_FLOP = true;
 
 const int HARD_CODE_FLOP0 = (int)RANKS::TEN * (int)SUITS::NUM + (int)SUITS::HEARTS;
-const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
-const int HARD_CODE_FLOP2 = (int)RANKS::THREE * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+const int HARD_CODE_FLOP1 = (int)RANKS::NINE * (int)SUITS::NUM + (int)SUITS::HEARTS;
+const int HARD_CODE_FLOP2 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+
+//const int HARD_CODE_FLOP0 = (int)RANKS::TEN * (int)SUITS::NUM + (int)SUITS::HEARTS;
+//const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+//const int HARD_CODE_FLOP2 = (int)RANKS::THREE * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
 
 // typical flop
 //const int HARD_CODE_FLOP0 = (int)RANKS::FIVE * (int)SUITS::NUM + (int)SUITS::CLUBS;
@@ -205,7 +237,7 @@ const bool OOP_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
 const bool OOP_ALWAYS_CHECKS_FIRST_TO_ACT = false;
 
 const bool IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO = false;
-const bool IP_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
+const bool IP_USES_FIXED_STRATEGY_WHEN_BET_TO = true;
 
 const bool CAN_SLOW_PLAY = true;
 const bool PRINT_IT = true;
@@ -931,6 +963,9 @@ int StringToCard(string card)
 
 STRAIGHT_DRAW_CATEGORY CheckForStraightDraws(int flop0, int flop1, int flop2, int hand0, int hand1)
 {
+    //todo: check for double gutshots.  and draws where the player only uses one card from hand.
+    //note: this is incorrect when one of the hole cards matches the board, but that doesn't happen to affect us.
+    
     int flop0Rank = flop0 / (int)SUITS::NUM;
     int flop1Rank = flop1 / (int)SUITS::NUM;
     int flop2Rank = flop2 / (int)SUITS::NUM;
@@ -949,6 +984,8 @@ STRAIGHT_DRAW_CATEGORY CheckForStraightDraws(int flop0, int flop1, int flop2, in
     rankExists[hand0Rank] = true;
     rankExists[hand1Rank] = true;
     
+    STRAIGHT_DRAW_CATEGORY bestDraw = STRAIGHT_DRAW_CATEGORY::NONE;
+    
     for (int i = 0; i < 9; i++)
     {
         int existingRanksForStraightStartingHere = 0;
@@ -959,31 +996,38 @@ STRAIGHT_DRAW_CATEGORY CheckForStraightDraws(int flop0, int flop1, int flop2, in
         if (rankExists[i+4]) existingRanksForStraightStartingHere++;
         if (existingRanksForStraightStartingHere == 4)
         {
-            // make sure both hole cards contribute
-            if (hand0Rank >= i && hand0Rank <= i + 4 &&
-              hand1Rank >= i && hand1Rank <= i + 4)
+            bool bothHoleCardsContribute =
+                (hand0Rank >= i && hand0Rank <= i + 4 &&
+                 hand1Rank >= i && hand1Rank <= i + 4);
+
+            if (!rankExists[i+1] ||
+                !rankExists[i+2] ||
+                !rankExists[i+3])
             {
-                if (!rankExists[i+1] ||
-                    !rankExists[i+2] ||
-                    !rankExists[i+3])
+                bestDraw = max(bestDraw, bothHoleCardsContribute ?
+                               STRAIGHT_DRAW_CATEGORY::GUTSHOT_TWO_CARD :
+                               STRAIGHT_DRAW_CATEGORY::GUTSHOT_ONE_CARD);
+            }
+            else if (!rankExists[i])
+            {
+                if (i == (int)RANKS::TEN)
                 {
-                    return STRAIGHT_DRAW_CATEGORY::GUTSHOT_INCLUDING_HOLE_CARDS;
-                }
-                else if (!rankExists[i])
-                {
-                    if (i == (int)RANKS::TEN)
-                    {
-                        return STRAIGHT_DRAW_CATEGORY::GUTSHOT_INCLUDING_HOLE_CARDS;
-                    }
-                    else
-                    {
-                        return STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_INCLUDING_HOLE_CARDS;
-                    }
+                    bestDraw = max(bestDraw, bothHoleCardsContribute ?
+                                   STRAIGHT_DRAW_CATEGORY::GUTSHOT_TWO_CARD :
+                                   STRAIGHT_DRAW_CATEGORY::GUTSHOT_ONE_CARD);
                 }
                 else
                 {
-                    return STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_INCLUDING_HOLE_CARDS;
+                    bestDraw = max(bestDraw, bothHoleCardsContribute ?
+                                   STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_TWO_CARD :
+                                   STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_ONE_CARD);
                 }
+            }
+            else
+            {
+                bestDraw = max(bestDraw, bothHoleCardsContribute ?
+                               STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_TWO_CARD :
+                               STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_ONE_CARD);
             }
         }
     }
@@ -999,15 +1043,15 @@ STRAIGHT_DRAW_CATEGORY CheckForStraightDraws(int flop0, int flop1, int flop2, in
         if (existingRanksForStraightStartingHere == 4)
         {
             // make sure both hold cards contribute
-            if ((hand0Rank == (int)RANKS::A || (hand0Rank >= 0 && hand0Rank <= 3)) &&
-                (hand1Rank == (int)RANKS::A || (hand1Rank >= 0 && hand1Rank <= 3)))
-            {
-                return STRAIGHT_DRAW_CATEGORY::GUTSHOT_INCLUDING_HOLE_CARDS;
-            }
+            bool bothHoleCardsContribute = ((hand0Rank == (int)RANKS::A || (hand0Rank >= 0 && hand0Rank <= 3)) &&
+                                       (hand1Rank == (int)RANKS::A || (hand1Rank >= 0 && hand1Rank <= 3)));
+            bestDraw = max(bestDraw, bothHoleCardsContribute ?
+                           STRAIGHT_DRAW_CATEGORY::GUTSHOT_TWO_CARD :
+                           STRAIGHT_DRAW_CATEGORY::GUTSHOT_ONE_CARD);
         }
     }
     
-    return STRAIGHT_DRAW_CATEGORY::NONE;
+    return bestDraw;
 }
 
 FLUSH_DRAW_CATEGORY CheckForFlushDraws(int flop0, int flop1, int flop2, int hand0, int hand1)
@@ -1027,11 +1071,18 @@ FLUSH_DRAW_CATEGORY CheckForFlushDraws(int flop0, int flop1, int flop2, int hand
         if (hand0Suit == flop2Suit) boardMatchedSuit++;
         if (boardMatchedSuit == 2)
         {
-            return FLUSH_DRAW_CATEGORY::FRONT_DOOR_INCLUDING_HOLE_CARDS;
+            return FLUSH_DRAW_CATEGORY::FRONT_DOOR_TWO_CARD;
         }
         else if (boardMatchedSuit == 1)
         {
-            return FLUSH_DRAW_CATEGORY::BACK_DOOR_INCLUDING_HOLE_CARDS;
+            return FLUSH_DRAW_CATEGORY::BACK_DOOR_TWO_CARD;
+        }
+    }
+    if (flop0Suit == flop1Suit && flop0Suit == flop2Suit)
+    {
+        if (hand0Suit == flop0Suit || hand1Suit == flop0Suit)
+        {
+            return FLUSH_DRAW_CATEGORY::FRONT_DOOR_ONE_CARD;
         }
     }
     return FLUSH_DRAW_CATEGORY::NONE;
@@ -1434,8 +1485,8 @@ ACTIONS GetOOPFixedStrategyActionFirstToAct(int deck[])
     }
     
     if (straightDrawCategory != STRAIGHT_DRAW_CATEGORY::NONE ||
-        flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_INCLUDING_HOLE_CARDS ||
-        flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_INCLUDING_HOLE_CARDS)
+        flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_TWO_CARD ||
+        flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_TWO_CARD)
     {
         return ACTIONS::BET;
     }
@@ -1538,8 +1589,8 @@ ACTIONS GetIPFixedStrategyActionWhenCheckedTo(int deck[])
     }
     
     if (straightDrawCategory != STRAIGHT_DRAW_CATEGORY::NONE ||
-        flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_INCLUDING_HOLE_CARDS ||
-        flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_INCLUDING_HOLE_CARDS)
+        flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_TWO_CARD ||
+        flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_TWO_CARD)
     {
         return ACTIONS::BET;
     }
@@ -1568,14 +1619,27 @@ ACTIONS GetIPFixedStrategyActionWhenBetTo(int deck[])
         return ACTIONS::BET;
     }
 
-    if (straightDrawCategory != STRAIGHT_DRAW_CATEGORY::NONE ||
-        flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_INCLUDING_HOLE_CARDS)
+    // we may want to adjust this for monotone boards?  allow the dealer to call with any of that suit.
+    // maybe in general we don't care if it's both cards from their hand and one's ok?
+    // I guess that's a lot of calling on 456.
+    // maybe that can just be the rule for bluffing, but we call with these draws.
+    // todo: check if dealer should bluff catch with one-card draws
+    // yes, the dealer should call with these hands
+    
+    if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_TWO_CARD ||
+        straightDrawCategory == STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_ONE_CARD ||
+        straightDrawCategory == STRAIGHT_DRAW_CATEGORY::DOUBLE_GUTSHOT_TWO_CARD ||
+        straightDrawCategory == STRAIGHT_DRAW_CATEGORY::DOUBLE_GUTSHOT_ONE_CARD ||
+        flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_TWO_CARD ||
+        flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_ONE_CARD)
     {
         return ACTIONS::BET;
     }
 
-    // A high or K high or Q high
-    if (highCardRank <= 2)
+    // A high or K high
+    // really, it's better to check if the other card is an over to bottom
+    // something like A and K high, but not if the other card is an undercard
+    if (highCardRank <= 1)
     {
         return ACTIONS::BET;
     }

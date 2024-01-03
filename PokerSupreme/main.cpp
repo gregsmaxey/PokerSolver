@@ -115,9 +115,9 @@ const int NUM_ITERATIONS = 10000000;
 const int BET_AMOUNT = 2;
 const bool HARD_CODE_FLOP = true;
 
-const int HARD_CODE_FLOP0 = (int)RANKS::TWO * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
-const int HARD_CODE_FLOP1 = (int)RANKS::SIX * (int)SUITS::NUM + (int)SUITS::HEARTS;
-const int HARD_CODE_FLOP2 = (int)RANKS::J * (int)SUITS::NUM + (int)SUITS::HEARTS;
+const int HARD_CODE_FLOP0 = (int)RANKS::TWO * (int)SUITS::NUM + (int)SUITS::HEARTS;
+const int HARD_CODE_FLOP1 = (int)RANKS::EIGHT * (int)SUITS::NUM + (int)SUITS::SPADES;
+const int HARD_CODE_FLOP2 = (int)RANKS::K * (int)SUITS::NUM + (int)SUITS::CLUBS;
 
 //const int HARD_CODE_FLOP0 = (int)RANKS::TEN * (int)SUITS::NUM + (int)SUITS::HEARTS;
 //const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
@@ -148,12 +148,12 @@ const int HARD_CODE_FLOP2 = (int)RANKS::J * (int)SUITS::NUM + (int)SUITS::HEARTS
 //const int HARD_CODE_FLOP1 = (int)RANKS::NINE * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
 //const int HARD_CODE_FLOP2 = (int)RANKS::Q * (int)SUITS::NUM + (int)SUITS::HEARTS;
 
+const bool INSERT_FIXED_STRATEGY_NODES = true;
 const bool OOP_USES_FIXED_STRATEGY_FIRST_TO_ACT = false;
 const bool OOP_USES_HARD_CODED_HANDS_STRATEGY_FIRST_TO_ACT = false;
 const bool OOP_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
-const bool OOP_ALWAYS_CHECKS_FIRST_TO_ACT = false;
 
-const bool IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO = false;
+const bool IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO = true;
 const bool IP_USES_FIXED_STRATEGY_WHEN_BET_TO = true;
 
 const bool CAN_SLOW_PLAY = true;
@@ -730,6 +730,13 @@ public:
             regretSums[i] = 0;
             strategySums[i] = 0;
         }
+    }
+
+    Node(string _infoSet, ACTIONS hardCodedAction)
+    : Node(_infoSet)
+    {
+        regretSums[(int)hardCodedAction] = 1;
+        strategySums[(int)hardCodedAction] = 1;
     }
 
     void GetNormalized(double strategy[], const double input[]) const
@@ -1569,6 +1576,9 @@ ACTIONS GetIPFixedStrategyActionWhenCheckedTo(int deck[])
     int flop2 = deck[2];
     int hand0 = deck[5];
     int hand1 = deck[6];
+    int flop0Rank = flop0 / (int)SUITS::NUM;
+    int flop1Rank = flop1 / (int)SUITS::NUM;
+    int flop2Rank = flop2 / (int)SUITS::NUM;
     int hand0Rank = hand0 / (int)SUITS::NUM;
     int hand1Rank = hand1 / (int)SUITS::NUM;
 
@@ -1591,10 +1601,61 @@ ACTIONS GetIPFixedStrategyActionWhenCheckedTo(int deck[])
     
     if (straightDrawCategory != STRAIGHT_DRAW_CATEGORY::NONE ||
         flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_TWO_CARD ||
-        flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_TWO_CARD)
+        flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_ONE_CARD)
+//        ||
+//        flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_TWO_CARD)
+        // optimally, also bet with multiple backdoors
     {
         return ACTIONS::BET;
     }
+
+    int lowestRank0 = 0;
+    int lowestRank1 = 1;
+    int lowestRank2 = 2;
+    int lowestRank3 = 3;
+    while (lowestRank0 == flop0Rank ||
+           lowestRank0 == flop1Rank ||
+           lowestRank0 == flop2Rank)
+    {
+        lowestRank0++;
+        lowestRank1++;
+        lowestRank2++;
+        lowestRank3++;
+    }
+    while (lowestRank1 == flop0Rank ||
+           lowestRank1 == flop1Rank ||
+           lowestRank1 == flop2Rank)
+    {
+        lowestRank1++;
+        lowestRank2++;
+        lowestRank3++;
+    }
+    while (lowestRank2 == flop0Rank ||
+           lowestRank2 == flop1Rank ||
+           lowestRank2 == flop2Rank)
+    {
+        lowestRank2++;
+        lowestRank3++;
+    }
+    while (lowestRank3 == flop0Rank ||
+           lowestRank3 == flop1Rank ||
+           lowestRank3 == flop2Rank)
+    {
+        lowestRank3++;
+    }
+
+    // any two low cards
+//    if ((hand0Rank == lowestRank0 ||
+//        hand0Rank == lowestRank1 ||
+//        hand0Rank == lowestRank2 ||
+//        hand0Rank == lowestRank3) &&
+//        (hand1Rank == lowestRank0 ||
+//         hand1Rank == lowestRank1 ||
+//         hand1Rank == lowestRank2 ||
+//         hand1Rank == lowestRank3))
+//    {
+//        return ACTIONS::BET;
+//    }
 
     return ACTIONS::PASS;
 }
@@ -1619,13 +1680,6 @@ ACTIONS GetIPFixedStrategyActionWhenBetTo(int deck[])
     {
         return ACTIONS::BET;
     }
-
-    // we may want to adjust this for monotone boards?  allow the dealer to call with any of that suit.
-    // maybe in general we don't care if it's both cards from their hand and one's ok?
-    // I guess that's a lot of calling on 456.
-    // maybe that can just be the rule for bluffing, but we call with these draws.
-    // todo: check if dealer should bluff catch with one-card draws
-    // yes, the dealer should call with these hands
     
     if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_TWO_CARD ||
         straightDrawCategory == STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_ONE_CARD ||
@@ -1703,53 +1757,50 @@ public:
             }
         }
         
+        ACTIONS fixedStrategyAction = ACTIONS::NUM;
+        
         if (OOP_USES_FIXED_STRATEGY_FIRST_TO_ACT && player == 0 && plays == 0)
         {
-            ACTIONS action = GetOOPFixedStrategyActionFirstToAct(deck);
-            string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
-            double ev = - CFR(deck, nextHistory, probability0, probability1);
-            return ev;
+            ACTIONS fixedStrategyAction = GetOOPFixedStrategyActionFirstToAct(deck);
         }
         else if (OOP_USES_HARD_CODED_HANDS_STRATEGY_FIRST_TO_ACT && player == 0 && plays == 0)
         {
             string infoSet = ConstructInfoSet(deck[0], deck[1], deck[2], deck[3 + player * 2], deck[4 + player * 2], history);
             string hand = infoSet.substr(6, 4);
 
-            ACTIONS action = ACTIONS::PASS;
-
-            if (hardCodedHands.contains(hand))
-            {
-                action = ACTIONS::BET;
-            }
-            string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
-            double ev = - CFR(deck, nextHistory, probability0, probability1);
-            return ev;
-        }
-        else if (OOP_ALWAYS_CHECKS_FIRST_TO_ACT && player == 0 && plays == 0)
-        {
-            string nextHistory = history + "p";
-            double ev = - CFR(deck, nextHistory, probability0, probability1);
-            return ev;
+            fixedStrategyAction = hardCodedHands.contains(hand) ?
+                fixedStrategyAction = ACTIONS::BET :
+                ACTIONS::PASS;
         }
         else if (OOP_USES_FIXED_STRATEGY_WHEN_BET_TO && player == 0 && plays == 2)
         {
-            ACTIONS action = GetOOPFixedStrategyActionWhenBetTo(deck);
-            string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
-            double ev = - CFR(deck, nextHistory, probability0, probability1);
-            return ev;
+            fixedStrategyAction = GetOOPFixedStrategyActionWhenBetTo(deck);
         }
         else if (IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO && player == 1 && history == "p")
         {
-            ACTIONS action = GetIPFixedStrategyActionWhenCheckedTo(deck);
-            string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
-            double ev = - CFR(deck, nextHistory, probability0, probability1);
-            return ev;
+            fixedStrategyAction = GetIPFixedStrategyActionWhenCheckedTo(deck);
         }
         else if (IP_USES_FIXED_STRATEGY_WHEN_BET_TO && player == 1 && history == "b")
         {
-            ACTIONS action = GetIPFixedStrategyActionWhenBetTo(deck);
-            string nextHistory = history + (action == ACTIONS::PASS ? "p" : "b");
+            fixedStrategyAction = GetIPFixedStrategyActionWhenBetTo(deck);
+        }
+        
+        if (fixedStrategyAction != ACTIONS::NUM)
+        {
+            string nextHistory = history + (fixedStrategyAction == ACTIONS::PASS ? "p" : "b");
             double ev = - CFR(deck, nextHistory, probability0, probability1);
+
+            if (INSERT_FIXED_STRATEGY_NODES)
+            {
+                string infoSet = ConstructInfoSet(deck[0], deck[1], deck[2], deck[3 + player * 2], deck[4 + player * 2], history);
+                
+                auto iter = nodes.find(infoSet);
+                if (iter == nodes.end())
+                {
+                    nodes.insert({infoSet, Node(infoSet, fixedStrategyAction)});
+                }
+            }
+
             return ev;
         }
         else
@@ -1758,7 +1809,6 @@ public:
             
             string infoSet = ConstructInfoSet(deck[0], deck[1], deck[2], deck[3 + player * 2], deck[4 + player * 2], history);
             
-            // make a better infoset.  all aces should be AxAyAz.  player hands should be sorted and suits x,y,z,w
             Node *nodePointer;
             
             auto iter = nodes.find(infoSet);
@@ -2021,7 +2071,10 @@ public:
                 {
                     for (int i = 0; i < (int)ACTIONS::NUM; i++)
                     {
-                        node.strategySums[i] = 0;
+                        if (node.strategySums[i] != 1)
+                        {
+                            node.strategySums[i] = 0;
+                        }
                     }
                 }
             }

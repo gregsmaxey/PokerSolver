@@ -111,96 +111,13 @@ enum class HAND_CATEGORY
     NUM
 };
 
-string CategoriesToString(HAND_CATEGORY handCategory, STRAIGHT_DRAW_CATEGORY straightDrawCategory, FLUSH_DRAW_CATEGORY flushDrawCategory)
-{
-    switch(handCategory)
-    {
-        case HAND_CATEGORY::STRAIGHT_FLUSH:
-            return "STRAIGHT_FLUSH";
-        case HAND_CATEGORY::QUADS:
-            return "QUADS";
-        case HAND_CATEGORY::BOAT:
-            return "BOAT";
-        case HAND_CATEGORY::FLUSH:
-            return "FLUSH";
-        case HAND_CATEGORY::STRAIGHT:
-            return "STRAIGHT";
-        case HAND_CATEGORY::SET:
-            return "SET";
-        case HAND_CATEGORY::TRIPS:
-            return "TRIPS";
-//        case HAND_CATEGORY::BOARD_TRIPS:
-//            return "BOARD_TRIPS";
-        case HAND_CATEGORY::TWO_PAIR_BOTH_IN_HOLE:
-            return "TWO_PAIR_BOTH_IN_HOLE";
-        case HAND_CATEGORY::TWO_PAIR_ONE_ON_HOLE:
-            return "TWO_PAIR_ONE_ON_HOLE";
-        case HAND_CATEGORY::TWO_PAIR_WITH_POCKET_PAIR:
-            return "TWO_PAIR_WITH_POCKET_PAIR";
-        case HAND_CATEGORY::PAIR_WITH_ONE_CARD_IN_HAND:
-            return "PAIR_WITH_ONE_CARD_IN_HAND";
-        case HAND_CATEGORY::POCKET_PAIR:
-            return "POCKET_PAIR";
-//        case HAND_CATEGORY::PAIR_ON_BOARD:
-//            return "PAIR_ON_BOARD";
-        default:
-        {
-            if (flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_TWO_CARD)
-            {
-                return "FRONT_DOOR_TWO_CARD";
-            }
-            if (flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_ONE_CARD)
-            {
-                return "FRONT_DOOR_ONE_CARD";
-            }
-            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_TWO_CARD ||
-                straightDrawCategory == STRAIGHT_DRAW_CATEGORY::DOUBLE_GUTSHOT_TWO_CARD)
-            {
-                return "OPEN_ENDED_TWO_CARD";
-            }
-            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::GUTSHOT_TWO_CARD)
-            {
-                if (flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_TWO_CARD)
-                {
-                    return "GUTSHOT_TWO_CARD_WITH_BACK_DOOR";
-                }
-                else
-                {
-                    return "GUTSHOT_TWO_CARD";
-                }
-            }
-            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_ONE_CARD ||
-                straightDrawCategory == STRAIGHT_DRAW_CATEGORY::DOUBLE_GUTSHOT_ONE_CARD)
-            {
-                return "OPEN_ENDED_ONE_CARD";
-            }
-            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::GUTSHOT_ONE_CARD)
-            {
-                if (flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_TWO_CARD)
-                {
-                    return "GUTSHOT_ONE_CARD_WITH_BACK_DOOR";
-                }
-                else
-                {
-                    return "GUTSHOT_ONE_CARD";
-                }
-            }
-            if (flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_TWO_CARD)
-            {
-                return "BACK_DOOR";
-            }
-            return "HIGH_CARD";
-        }
-    }
-}
-
 const int NUM_ITERATIONS = 10000000;
 const int BET_AMOUNT = 2;
 const bool HARD_CODE_FLOP = true;
 
-const int HARD_CODE_FLOP0 = (int)RANKS::TEN * (int)SUITS::NUM + (int)SUITS::HEARTS;
-const int HARD_CODE_FLOP1 = (int)RANKS::NINE * (int)SUITS::NUM + (int)SUITS::HEARTS;
-const int HARD_CODE_FLOP2 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+const int HARD_CODE_FLOP0 = (int)RANKS::TWO * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+const int HARD_CODE_FLOP1 = (int)RANKS::SIX * (int)SUITS::NUM + (int)SUITS::HEARTS;
+const int HARD_CODE_FLOP2 = (int)RANKS::J * (int)SUITS::NUM + (int)SUITS::HEARTS;
 
 //const int HARD_CODE_FLOP0 = (int)RANKS::TEN * (int)SUITS::NUM + (int)SUITS::HEARTS;
 //const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
@@ -711,6 +628,90 @@ set<string> hardCodedHands = {
     "AzKz",
     "AzKw",
 };
+
+string CategoriesToString(HAND_CATEGORY handCategory, STRAIGHT_DRAW_CATEGORY straightDrawCategory, FLUSH_DRAW_CATEGORY flushDrawCategory)
+{
+    switch(handCategory)
+    {
+        case HAND_CATEGORY::STRAIGHT_FLUSH:
+            return "STRAIGHT_FLUSH";
+        case HAND_CATEGORY::QUADS:
+            return "QUADS";
+        case HAND_CATEGORY::BOAT:
+            return "BOAT";
+        case HAND_CATEGORY::FLUSH:
+            return "FLUSH";
+        case HAND_CATEGORY::STRAIGHT:
+            return "STRAIGHT";
+        case HAND_CATEGORY::SET:
+            return "SET";
+        case HAND_CATEGORY::TRIPS:
+            return "TRIPS";
+//        case HAND_CATEGORY::BOARD_TRIPS:
+//            return "BOARD_TRIPS";
+        case HAND_CATEGORY::TWO_PAIR_BOTH_IN_HOLE:
+            return "TWO_PAIR_BOTH_IN_HOLE";
+        case HAND_CATEGORY::TWO_PAIR_ONE_ON_HOLE:
+            return "TWO_PAIR_ONE_ON_HOLE";
+        case HAND_CATEGORY::TWO_PAIR_WITH_POCKET_PAIR:
+            return "TWO_PAIR_WITH_POCKET_PAIR";
+        case HAND_CATEGORY::PAIR_WITH_ONE_CARD_IN_HAND:
+            return "PAIR_WITH_ONE_CARD_IN_HAND";
+        case HAND_CATEGORY::POCKET_PAIR:
+            return "POCKET_PAIR";
+//        case HAND_CATEGORY::PAIR_ON_BOARD:
+//            return "PAIR_ON_BOARD";
+        default:
+        {
+            if (flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_TWO_CARD)
+            {
+                return "FRONT_DOOR_TWO_CARD";
+            }
+            if (flushDrawCategory == FLUSH_DRAW_CATEGORY::FRONT_DOOR_ONE_CARD)
+            {
+                return "FRONT_DOOR_ONE_CARD";
+            }
+            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_TWO_CARD ||
+                straightDrawCategory == STRAIGHT_DRAW_CATEGORY::DOUBLE_GUTSHOT_TWO_CARD)
+            {
+                return "OPEN_ENDED_TWO_CARD";
+            }
+            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::GUTSHOT_TWO_CARD)
+            {
+                if (flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_TWO_CARD)
+                {
+                    return "GUTSHOT_TWO_CARD_WITH_BACK_DOOR";
+                }
+                else
+                {
+                    return "GUTSHOT_TWO_CARD";
+                }
+            }
+            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::OPEN_ENDED_ONE_CARD ||
+                straightDrawCategory == STRAIGHT_DRAW_CATEGORY::DOUBLE_GUTSHOT_ONE_CARD)
+            {
+                return "OPEN_ENDED_ONE_CARD";
+            }
+            if (straightDrawCategory == STRAIGHT_DRAW_CATEGORY::GUTSHOT_ONE_CARD)
+            {
+                if (flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_TWO_CARD)
+                {
+                    return "GUTSHOT_ONE_CARD_WITH_BACK_DOOR";
+                }
+                else
+                {
+                    return "GUTSHOT_ONE_CARD";
+                }
+            }
+            if (flushDrawCategory == FLUSH_DRAW_CATEGORY::BACK_DOOR_TWO_CARD)
+            {
+                return "BACK_DOOR";
+            }
+            return "HIGH_CARD";
+        }
+    }
+}
+
 
 HandEvaluator handEvaluator;
 

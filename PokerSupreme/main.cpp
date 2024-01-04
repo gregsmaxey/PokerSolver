@@ -111,13 +111,70 @@ enum class HAND_CATEGORY
     NUM
 };
 
-const int NUM_ITERATIONS = 10000000;
+// linear with global iteration number
+// 1,000,000 -0.0347588, -0.0341119
+// 2,000,000 -0.0218729
+// 5,000,000 -0.0121249
+// 10,000,000 -0.00782353, -0.00765364
+// 20,000,000
+// 40,000,000
+
+// normal cfr
+// 1,000,000 -0.0401731
+// 2,000,000 -0.0314868,
+// 5,000,000 -0.0215416
+// 10,000,000 -0.0125153
+// 20,000,000
+// 40,000,000
+
+// normal cfr, sampling ev during just last half
+// 1,000,000 -0.0259818 -0.0278989
+// 2,000,000 -0.0216574
+// 5,000,000 -0.00917349
+
+// normal cfr, sampling ev during just last tenth
+// 1,000,000 -0.018369 -0.0187016 -0.0193096
+// 2,000,000 -0.0256384 -0.00998227 -0.0072947 ??? all over the place
+// 5,000,000
+
+// linear within each node, sampling ev just last tenth:
+// 1,000,000 -0.0290438 -0.023262 -0.016356 -0.0318114 -0.030205
+// 2,000,000 -0.0140967 -0.00641423 -0.0190033
+// 5,000,000 -0.00488722
+
+// linear within each node, sampling ev just last fifth:
+// 1,000,000 -0.0268436 -0.0241628 -0.0284217
+// 2,000,000 -0.0150206 -0.0188565 -0.0142538
+// 5,000,000 -0.00906665 -0.00542614 -0.00493395
+// 10,000,000 -0.00446246 -0.00498335
+// 20,000,000  -0.00144748
+
+// linear within each node, sampling ev just last fifth, using t^2:
+// 1,000,000 -0.022089 -0.029191 -0.0218712
+// 2,000,000 -0.0172322, -0.0196545 -0.0154876
+// 5,000,000 -0.00927754 -0.00847713
+// 10,000,000 -0.00816232
+// 20,000,000 -0.00121892
+
+// linear within each node, using t^2, normalizing strategy at end:
+// 1,000,000
+// 2,000,000
+// 5,000,000 -0.0102154 ... nah, better
+// 10,000,000 0.00559911 0.00483644
+// 20,000,000 0.00582565
+// 40,000,000
+
+// 5 mil seems enough with 2 for ev calc
+
+const int NUM_ITERATIONS = 5000000;
+const bool NORMALIZE_STRATEGY = true;
+const int NUM_ITERATIONS_FOR_EV_CALCULATION = 2000000;
 const int BET_AMOUNT = 2;
 const bool HARD_CODE_FLOP = true;
 
-const int HARD_CODE_FLOP0 = (int)RANKS::TWO * (int)SUITS::NUM + (int)SUITS::HEARTS;
-const int HARD_CODE_FLOP1 = (int)RANKS::EIGHT * (int)SUITS::NUM + (int)SUITS::SPADES;
-const int HARD_CODE_FLOP2 = (int)RANKS::K * (int)SUITS::NUM + (int)SUITS::CLUBS;
+const int HARD_CODE_FLOP0 = (int)RANKS::THREE * (int)SUITS::NUM + (int)SUITS::HEARTS;
+const int HARD_CODE_FLOP1 = (int)RANKS::NINE * (int)SUITS::NUM + (int)SUITS::CLUBS;
+const int HARD_CODE_FLOP2 = (int)RANKS::J * (int)SUITS::NUM + (int)SUITS::CLUBS;
 
 //const int HARD_CODE_FLOP0 = (int)RANKS::TEN * (int)SUITS::NUM + (int)SUITS::HEARTS;
 //const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
@@ -155,6 +212,15 @@ const bool OOP_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
 
 const bool IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO = true;
 const bool IP_USES_FIXED_STRATEGY_WHEN_BET_TO = true;
+
+// I could print out whether or not an error is made by the fixed strategy by comparing it to the GTO strategy.
+// This would require simulating twice - once with GTO, once with fixed.  then when printing, show if error.
+
+// this could also be used to show the player's strategy adjustments to be exploitative
+// show the GTO strategy, but also notate "don't do this against this player"
+// that could help me better understand how to exploit
+
+// this could also print out the EV difference between the two solutions
 
 const bool CAN_SLOW_PLAY = true;
 const bool PRINT_IT = true;
@@ -721,6 +787,7 @@ public:
     double regretSums[(int)ACTIONS::NUM];
     double strategySums[(int)ACTIONS::NUM];
     string infoSet;
+    int timesNodeVisited = 0;
     
     Node(string _infoSet)
     {
@@ -774,9 +841,10 @@ public:
     
     void UpdateStrategySums(double strategy[], double realizationWeight)
     {
+        timesNodeVisited++;
         for (int i = 0; i < (int)ACTIONS::NUM; i++)
         {
-            strategySums[i] += realizationWeight * strategy[i];
+            strategySums[i] += realizationWeight * strategy[i] * timesNodeVisited * timesNodeVisited;
         }
     }
     
@@ -971,9 +1039,10 @@ int StringToCard(string card)
 
 STRAIGHT_DRAW_CATEGORY CheckForStraightDraws(int flop0, int flop1, int flop2, int hand0, int hand1)
 {
-    //todo: check for double gutshots.  and draws where the player only uses one card from hand.
     //note: this is incorrect when one of the hole cards matches the board, but that doesn't happen to affect us.
-    
+
+    //todo: check for double gutshots.
+
     int flop0Rank = flop0 / (int)SUITS::NUM;
     int flop1Rank = flop1 / (int)SUITS::NUM;
     int flop2Rank = flop2 / (int)SUITS::NUM;
@@ -1645,17 +1714,17 @@ ACTIONS GetIPFixedStrategyActionWhenCheckedTo(int deck[])
     }
 
     // any two low cards
-//    if ((hand0Rank == lowestRank0 ||
-//        hand0Rank == lowestRank1 ||
-//        hand0Rank == lowestRank2 ||
-//        hand0Rank == lowestRank3) &&
-//        (hand1Rank == lowestRank0 ||
-//         hand1Rank == lowestRank1 ||
-//         hand1Rank == lowestRank2 ||
-//         hand1Rank == lowestRank3))
-//    {
-//        return ACTIONS::BET;
-//    }
+    if ((hand0Rank == lowestRank0 ||
+        hand0Rank == lowestRank1 ||
+        hand0Rank == lowestRank2 ||
+        hand0Rank == lowestRank3) &&
+        (hand1Rank == lowestRank0 ||
+         hand1Rank == lowestRank1 ||
+         hand1Rank == lowestRank2 ||
+         hand1Rank == lowestRank3))
+    {
+        return ACTIONS::BET;
+    }
 
     return ACTIONS::PASS;
 }
@@ -1733,7 +1802,7 @@ class Solver
     unordered_map<string, Node> nodes;
 public:
             
-    double CFR(int deck[], string history, double probability0, double probability1)
+    double CFR(int deck[], string history, double probability0, double probability1, bool justCalculateEv)
     {
         int plays = (int)history.length();
         int player = plays % 2;
@@ -1761,7 +1830,7 @@ public:
         
         if (OOP_USES_FIXED_STRATEGY_FIRST_TO_ACT && player == 0 && plays == 0)
         {
-            ACTIONS fixedStrategyAction = GetOOPFixedStrategyActionFirstToAct(deck);
+            fixedStrategyAction = GetOOPFixedStrategyActionFirstToAct(deck);
         }
         else if (OOP_USES_HARD_CODED_HANDS_STRATEGY_FIRST_TO_ACT && player == 0 && plays == 0)
         {
@@ -1788,7 +1857,7 @@ public:
         if (fixedStrategyAction != ACTIONS::NUM)
         {
             string nextHistory = history + (fixedStrategyAction == ACTIONS::PASS ? "p" : "b");
-            double ev = - CFR(deck, nextHistory, probability0, probability1);
+            double ev = - CFR(deck, nextHistory, probability0, probability1, justCalculateEv);
 
             if (INSERT_FIXED_STRATEGY_NODES)
             {
@@ -1824,7 +1893,10 @@ public:
             
             double strategy[(int)ACTIONS::NUM];
             nodePointer->GetStrategy(strategy);
-            nodePointer->UpdateStrategySums(strategy, player == 0 ? probability0 : probability1);
+            if (!justCalculateEv)
+            {
+                nodePointer->UpdateStrategySums(strategy, player == 0 ? probability0 : probability1);
+            }
             
             // traverse to the next nodes and calculate ev
             double ev[(int)ACTIONS::NUM];
@@ -1835,18 +1907,21 @@ public:
                 double nextNodeProbability0 = (player == 0) ? probability0 * strategy[a] : probability0;
                 double nextNodeProbability1 = (player == 1) ? probability1 * strategy[a] : probability1;
                 // ev is inverted here because the next node's ev is from the perspective of the opponent
-                ev[a] = - CFR(deck, nextHistory, nextNodeProbability0, nextNodeProbability1);
+                ev[a] = - CFR(deck, nextHistory, nextNodeProbability0, nextNodeProbability1, justCalculateEv);
                 nodeEV += strategy[a] * ev[a];
             }
             
-            double probabilityWeGetHere = player == 0 ? probability1 : probability0;
-            for (int a = 0; a < (int)ACTIONS::NUM; a++)
+            if (!justCalculateEv)
             {
-                double regret = ev[a] - nodeEV;
-                nodePointer->regretSums[a] += probabilityWeGetHere * regret;
-                
-                //cfr+   this helps it resolve faster
-                nodePointer->regretSums[a] = max(0.0, nodePointer->regretSums[a]);
+                double probabilityWeGetHere = player == 0 ? probability1 : probability0;
+                for (int a = 0; a < (int)ACTIONS::NUM; a++)
+                {
+                    double regret = ev[a] - nodeEV;
+                    nodePointer->regretSums[a] += probabilityWeGetHere * regret;
+                    
+                    //cfr+   this helps it resolve faster
+                    nodePointer->regretSums[a] = max(0.0, nodePointer->regretSums[a]);
+                }
             }
             return nodeEV;
         }
@@ -2056,6 +2131,7 @@ public:
     {
         int deck[NUM_CARDS];
         double ev = 0;
+        double evDivisor = 0;
         cout << "--------------------\n";
         for (int iteration = 0; iteration < NUM_ITERATIONS; iteration++)
         {
@@ -2063,7 +2139,7 @@ public:
             {
                 cout << ".";
             }
-            // clear out strategy halfway through for efficiency.  cfr+ has a better weighted sum
+/*
             if (iteration == NUM_ITERATIONS/2)
             {
                 ev = 0;
@@ -2078,11 +2154,52 @@ public:
                     }
                 }
             }
-            
+*/
+            // cfr+ weighted averaging from https://arxiv.org/pdf/1809.04040.pdf
+
             ShuffleDeck(deck);
-            ev += CFR(deck, "", 1, 1);
+            double evThisIteration = CFR(deck, "", 1, 1, false);
+            if (iteration > NUM_ITERATIONS*0.8)
+            {
+                ev += evThisIteration;
+                evDivisor++;
+            }
         }
-        ev /= (NUM_ITERATIONS/2);
+        ev /= evDivisor;
+
+        if (NORMALIZE_STRATEGY)
+        {
+            for (auto & [ key, node ] : nodes)
+            {
+                if (node.strategySums[1] > node.strategySums[0])
+                {
+                    node.strategySums[1] = 100;
+                    node.strategySums[0] = 0;
+                    node.regretSums[1] = 100;
+                    node.regretSums[0] = 0;
+                }
+                else
+                {
+                    node.strategySums[1] = 0;
+                    node.strategySums[0] = 100;
+                    node.regretSums[1] = 1;
+                    node.regretSums[0] = 100;
+                }
+            }
+            ev = 0;
+
+            for (int iteration = 0; iteration < NUM_ITERATIONS_FOR_EV_CALCULATION; iteration++)
+            {
+                if (iteration % (NUM_ITERATIONS_FOR_EV_CALCULATION/20) == 0)
+                {
+                    cout << ".";
+                }
+                
+                ShuffleDeck(deck);
+                ev += CFR(deck, "", 1, 1, true);
+            }
+            ev /= NUM_ITERATIONS_FOR_EV_CALCULATION;
+        }
 
         std::cout << "\n{\n\"Iterations\": " << NUM_ITERATIONS << ",\n\"Total ev\": " << ev << ",\n";
         if (PRINT_IT)

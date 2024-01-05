@@ -166,64 +166,9 @@ enum class HAND_CATEGORY
 
 // 5 mil seems enough with 2 for ev calc
 
-const int NUM_ITERATIONS = 5000000;
-const bool NORMALIZE_STRATEGY = true;
-const int NUM_ITERATIONS_FOR_EV_CALCULATION = 2000000;
-const int BET_AMOUNT = 2;
-const bool HARD_CODE_FLOP = true;
-
-const int HARD_CODE_FLOP0 = (int)RANKS::THREE * (int)SUITS::NUM + (int)SUITS::HEARTS;
-const int HARD_CODE_FLOP1 = (int)RANKS::NINE * (int)SUITS::NUM + (int)SUITS::CLUBS;
-const int HARD_CODE_FLOP2 = (int)RANKS::J * (int)SUITS::NUM + (int)SUITS::CLUBS;
-
-//const int HARD_CODE_FLOP0 = (int)RANKS::TEN * (int)SUITS::NUM + (int)SUITS::HEARTS;
-//const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
-//const int HARD_CODE_FLOP2 = (int)RANKS::THREE * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
-
-// typical flop
-//const int HARD_CODE_FLOP0 = (int)RANKS::FIVE * (int)SUITS::NUM + (int)SUITS::CLUBS;
-//const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::CLUBS;
-//const int HARD_CODE_FLOP2 = (int)RANKS::K * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
-
-//paired high card
-//const int HARD_CODE_FLOP0 = (int)RANKS::FIVE * (int)SUITS::NUM + (int)SUITS::CLUBS;
-//const int HARD_CODE_FLOP1 = (int)RANKS::K * (int)SUITS::NUM + (int)SUITS::CLUBS;
-//const int HARD_CODE_FLOP2 = (int)RANKS::K * (int)SUITS::NUM + (int)SUITS::SPADES;
-
-// few draws, monochrome
-//const int HARD_CODE_FLOP0 = (int)RANKS::TWO * (int)SUITS::NUM + (int)SUITS::CLUBS;
-//const int HARD_CODE_FLOP1 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::CLUBS;
-//const int HARD_CODE_FLOP2 = (int)RANKS::Q * (int)SUITS::NUM + (int)SUITS::CLUBS;
-
-// trips
-//const int HARD_CODE_FLOP0 = (int)RANKS::A * (int)SUITS::NUM + (int)SUITS::CLUBS;
-//const int HARD_CODE_FLOP1 = (int)RANKS::A * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
-//const int HARD_CODE_FLOP2 = (int)RANKS::A * (int)SUITS::NUM + (int)SUITS::HEARTS;
-
-// lots of draws
-//const int HARD_CODE_FLOP0 = (int)RANKS::SEVEN * (int)SUITS::NUM + (int)SUITS::CLUBS;
-//const int HARD_CODE_FLOP1 = (int)RANKS::NINE * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
-//const int HARD_CODE_FLOP2 = (int)RANKS::Q * (int)SUITS::NUM + (int)SUITS::HEARTS;
-
-const bool INSERT_FIXED_STRATEGY_NODES = true;
-const bool OOP_USES_FIXED_STRATEGY_FIRST_TO_ACT = false;
-const bool OOP_USES_HARD_CODED_HANDS_STRATEGY_FIRST_TO_ACT = false;
-const bool OOP_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
-
-const bool IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO = true;
-const bool IP_USES_FIXED_STRATEGY_WHEN_BET_TO = true;
-
-// I could print out whether or not an error is made by the fixed strategy by comparing it to the GTO strategy.
-// This would require simulating twice - once with GTO, once with fixed.  then when printing, show if error.
-
-// this could also be used to show the player's strategy adjustments to be exploitative
-// show the GTO strategy, but also notate "don't do this against this player"
-// that could help me better understand how to exploit
-
-// this could also print out the EV difference between the two solutions
-
-const bool CAN_SLOW_PLAY = true;
-const bool PRINT_IT = true;
+// next up: put these parameters in the solver itself instead of defines up top
+// make two: one for GTO, one for dealer strategy
+// when printing out, show the dealer strategy and specify with each node if it's a deviation
 
 set<string> hardCodedHands = {
     "2x2y",
@@ -1494,11 +1439,6 @@ bool CheckForSlowPlay(int flop0, int flop1, int flop2, int hand0, int hand1, int
     int hand0Rank = hand0 / (int)SUITS::NUM;
     int hand1Rank = hand1 / (int)SUITS::NUM;
 
-    if (!CAN_SLOW_PLAY)
-    {
-        return false;
-    }
-
     if (holeCardsMatchingBoard == 2 && hand0Rank == hand1Rank)
     {
         return true;
@@ -1523,6 +1463,8 @@ bool CheckForSlowPlay(int flop0, int flop1, int flop2, int hand0, int hand1, int
 
 ACTIONS GetOOPFixedStrategyActionFirstToAct(int deck[])
 {
+    const bool CAN_SLOW_PLAY = true;
+    
     int flop0 = deck[0];
     int flop1 = deck[1];
     int flop2 = deck[2];
@@ -1534,7 +1476,7 @@ ACTIONS GetOOPFixedStrategyActionFirstToAct(int deck[])
     STRAIGHT_DRAW_CATEGORY straightDrawCategory;
     FLUSH_DRAW_CATEGORY flushDrawCategory;
     GetHandInfo(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handCategory, straightDrawCategory, flushDrawCategory, highCardRank);
-    if (CheckForSlowPlay(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handCategory))
+    if (CAN_SLOW_PLAY && CheckForSlowPlay(flop0, flop1, flop2, hand0, hand1, holeCardsMatchingBoard, handCategory))
     {
         return ACTIONS::PASS;
     }
@@ -1800,8 +1742,27 @@ struct pokerStringCompare {
 class Solver
 {
     unordered_map<string, Node> nodes;
+    double estimatedEV = 0;
+    
 public:
-            
+
+    int NUM_ITERATIONS = 5000000;
+    int NUM_ITERATIONS_FOR_EV_CALCULATION = 2000000;
+    int BET_AMOUNT = 2;
+    bool HARD_CODE_FLOP = true;
+
+    int HARD_CODE_FLOP0 = (int)RANKS::THREE * (int)SUITS::NUM + (int)SUITS::HEARTS;
+    int HARD_CODE_FLOP1 = (int)RANKS::NINE * (int)SUITS::NUM + (int)SUITS::CLUBS;
+    int HARD_CODE_FLOP2 = (int)RANKS::J * (int)SUITS::NUM + (int)SUITS::CLUBS;
+    
+    bool INSERT_FIXED_STRATEGY_NODES = true;
+    bool OOP_USES_FIXED_STRATEGY_FIRST_TO_ACT = false;
+    bool OOP_USES_HARD_CODED_HANDS_STRATEGY_FIRST_TO_ACT = false;
+    bool OOP_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
+
+    bool IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO = true;
+    bool IP_USES_FIXED_STRATEGY_WHEN_BET_TO = true;
+
     double CFR(int deck[], string history, double probability0, double probability1, bool justCalculateEv)
     {
         int plays = (int)history.length();
@@ -2093,6 +2054,8 @@ public:
             string handCategoryString = CategoriesToString(handCategory, straightDrawCategory, flushDrawCategory);
             nodesPerSpot[strategyAction][handCategoryString].insert({key, node});
         }
+        
+        std::cout << "\n{\n\"Iterations\": " << NUM_ITERATIONS << ",\n\"Total ev\": " << estimatedEV << ",\n";
 
         string firstInfoSet = sortedNodes.begin()->first;
         string flop = firstInfoSet.substr(0, 7);
@@ -2124,14 +2087,12 @@ public:
             std::cout << "\n}\n";
             needsCommaOuter = true;
         }
-        std::cout << "}\n\n";
+        std::cout << "}\n\n}\n";
     }
     
     void Solve()
     {
         int deck[NUM_CARDS];
-        double ev = 0;
-        double evDivisor = 0;
         cout << "--------------------\n";
         for (int iteration = 0; iteration < NUM_ITERATIONS; iteration++)
         {
@@ -2139,82 +2100,77 @@ public:
             {
                 cout << ".";
             }
-/*
-            if (iteration == NUM_ITERATIONS/2)
-            {
-                ev = 0;
-                for (auto & [ key, node ] : nodes)
-                {
-                    for (int i = 0; i < (int)ACTIONS::NUM; i++)
-                    {
-                        if (node.strategySums[i] != 1)
-                        {
-                            node.strategySums[i] = 0;
-                        }
-                    }
-                }
-            }
-*/
-            // cfr+ weighted averaging from https://arxiv.org/pdf/1809.04040.pdf
-
+            
             ShuffleDeck(deck);
-            double evThisIteration = CFR(deck, "", 1, 1, false);
-            if (iteration > NUM_ITERATIONS*0.8)
-            {
-                ev += evThisIteration;
-                evDivisor++;
-            }
+            CFR(deck, "", 1, 1, false);
         }
-        ev /= evDivisor;
-
-        if (NORMALIZE_STRATEGY)
+    }
+    void NormalizeStrategy()
+    {
+        for (auto & [ key, node ] : nodes)
         {
-            for (auto & [ key, node ] : nodes)
+            if (node.strategySums[1] > node.strategySums[0])
             {
-                if (node.strategySums[1] > node.strategySums[0])
-                {
-                    node.strategySums[1] = 100;
-                    node.strategySums[0] = 0;
-                    node.regretSums[1] = 100;
-                    node.regretSums[0] = 0;
-                }
-                else
-                {
-                    node.strategySums[1] = 0;
-                    node.strategySums[0] = 100;
-                    node.regretSums[1] = 1;
-                    node.regretSums[0] = 100;
-                }
+                node.strategySums[1] = 100;
+                node.strategySums[0] = 0;
+                node.regretSums[1] = 100;
+                node.regretSums[0] = 0;
             }
-            ev = 0;
-
-            for (int iteration = 0; iteration < NUM_ITERATIONS_FOR_EV_CALCULATION; iteration++)
+            else
             {
-                if (iteration % (NUM_ITERATIONS_FOR_EV_CALCULATION/20) == 0)
-                {
-                    cout << ".";
-                }
-                
-                ShuffleDeck(deck);
-                ev += CFR(deck, "", 1, 1, true);
+                node.strategySums[1] = 0;
+                node.strategySums[0] = 100;
+                node.regretSums[1] = 1;
+                node.regretSums[0] = 100;
             }
-            ev /= NUM_ITERATIONS_FOR_EV_CALCULATION;
         }
+    }
+    
+    void estimateEV()
+    {
+        int deck[NUM_CARDS];
+        estimatedEV = 0;
 
-        std::cout << "\n{\n\"Iterations\": " << NUM_ITERATIONS << ",\n\"Total ev\": " << ev << ",\n";
-        if (PRINT_IT)
+        for (int iteration = 0; iteration < NUM_ITERATIONS_FOR_EV_CALCULATION; iteration++)
         {
-            Print();
+            if (iteration % (NUM_ITERATIONS_FOR_EV_CALCULATION/20) == 0)
+            {
+                cout << ".";
+            }
+            
+            ShuffleDeck(deck);
+            estimatedEV += CFR(deck, "", 1, 1, true);
         }
-        std::cout << "}\n";
+        estimatedEV /= NUM_ITERATIONS_FOR_EV_CALCULATION;
     }
 };
 
 int main(int argc, const char * argv[]) {
     srand((unsigned int)time(0));
-    
+
+    bool NORMALIZE_STRATEGY = true;
+
     Solver solver;
+    solver.NUM_ITERATIONS = 10000000;
+    solver.HARD_CODE_FLOP0 = (int)RANKS::FOUR * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+    solver.HARD_CODE_FLOP1 = (int)RANKS::J * (int)SUITS::NUM + (int)SUITS::SPADES;
+    solver.HARD_CODE_FLOP2 = (int)RANKS::A * (int)SUITS::NUM + (int)SUITS::HEARTS;
+    solver.IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO = true;
+    solver.IP_USES_FIXED_STRATEGY_WHEN_BET_TO = true;
     solver.Solve();
+    if (NORMALIZE_STRATEGY)
+    {
+        solver.NormalizeStrategy();
+    }
+    solver.estimateEV();
+    solver.Print();
+
+//    solver.IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO = true;
+//    solver.IP_USES_FIXED_STRATEGY_WHEN_BET_TO = true;
+//    solver.estimateEV();
+//    
+//    solver.Print();
+
     return 0;
 }
 

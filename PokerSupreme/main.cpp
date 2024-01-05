@@ -1814,7 +1814,7 @@ public:
         {
             fixedStrategyAction = GetIPFixedStrategyActionWhenBetTo(deck);
         }
-
+        
         if (fixedStrategyAction != ACTIONS::NUM)
         {
             string nextHistory = history + (fixedStrategyAction == ACTIONS::PASS ? "p" : "b");
@@ -1991,8 +1991,8 @@ public:
             double secondaryPercentageGTO = -1;
             if (solverGTO)
             {
-                auto iter = nodes.find(node.infoSet);
-                if (iter != nodes.end())
+                auto iter = solverGTO->nodes.find(node.infoSet);
+                if (iter != solverGTO->nodes.end())
                 {
                     const Node &nodeGTO = iter->second;
                     strategyActionGTO = solverGTO->GetStrategyActionFromNode(key, nodeGTO, percentageGTO, secondaryPercentageGTO);
@@ -2042,7 +2042,7 @@ public:
                             std::round(percentage * 1000.0) / 1000.0 << " " <<
                             std::round(secondaryPercentage * 1000.0) / 1000.0 <<
                             " deviation from " <<
-                            strategyActionStrings[(int)strategyActionGTO] <<
+                            strategyActionStrings[(int)strategyActionGTO] << " " <<
                             std::round(percentageGTO * 1000.0) / 1000.0 << " " <<
                             std::round(secondaryPercentageGTO * 1000.0) / 1000.0 <<
                             "\"";
@@ -2083,7 +2083,7 @@ public:
                             hand << " " <<
                             std::round(percentage * 1000.0) / 1000.0 <<
                             " deviation from " <<
-                            strategyActionStrings[(int)strategyActionGTO] <<
+                            strategyActionStrings[(int)strategyActionGTO] << " " <<
                             std::round(percentageGTO * 1000.0) / 1000.0 << " " <<
                             std::round(secondaryPercentageGTO * 1000.0) / 1000.0 <<
                             "\"";

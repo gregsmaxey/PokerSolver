@@ -1814,7 +1814,7 @@ public:
         {
             fixedStrategyAction = GetIPFixedStrategyActionWhenBetTo(deck);
         }
-        
+
         if (fixedStrategyAction != ACTIONS::NUM)
         {
             string nextHistory = history + (fixedStrategyAction == ACTIONS::PASS ? "p" : "b");
@@ -1909,7 +1909,7 @@ public:
         }
     }
     
-    STRATEGY_ACTIONS GetStrategyActionFromNode(const map<string, Node, pokerStringCompare> &sortedNodes, string key, const Node &node, double &percentage, double &secondaryPercentage)
+    STRATEGY_ACTIONS GetStrategyActionFromNode(string key, const Node &node, double &percentage, double &secondaryPercentage) const
     {
         percentage = -1;
         secondaryPercentage = -1;
@@ -1929,9 +1929,9 @@ public:
             }
             else
             {
-                string secondaryKey = flop + hand + "pb";
-                auto iter = sortedNodes.find(secondaryKey);
-                if (iter != sortedNodes.end())
+                string secondaryKey = node.infoSet + "pb";
+                auto iter = nodes.find(secondaryKey);
+                if (iter != nodes.end())
                 {
                     const Node &node2 = iter->second;
                     double strategy2[(int)ACTIONS::NUM];
@@ -1943,7 +1943,12 @@ public:
                     {
                         return STRATEGY_ACTIONS::OOP_CHECK_CALL;
                     }
+                    else
+                    {
+                        return STRATEGY_ACTIONS::OOP_CHECK_FOLD;
+                    }
                 }
+                cout << "error: missing node\n";
                 return STRATEGY_ACTIONS::OOP_CHECK_FOLD;
             }
         }
@@ -1972,13 +1977,27 @@ public:
         return STRATEGY_ACTIONS::NOT_A_ROOT_NODE;
     }
     
-    void PrintActions(const map<string, Node, pokerStringCompare> &sortedNodes)
+    void PrintActions(const map<string, Node, pokerStringCompare> &sortedNodes,
+                      const Solver *solverGTO)
     {
         bool needComma = false;
         for (const auto & [ key, node ] : sortedNodes)
         {
             double percentage, secondaryPercentage;
-            GetStrategyActionFromNode(sortedNodes, key, node, percentage, secondaryPercentage);
+            STRATEGY_ACTIONS strategyAction = GetStrategyActionFromNode(key, node, percentage, secondaryPercentage);
+
+            STRATEGY_ACTIONS strategyActionGTO = STRATEGY_ACTIONS::NUM;
+            double percentageGTO = -1;
+            double secondaryPercentageGTO = -1;
+            if (solverGTO)
+            {
+                auto iter = nodes.find(node.infoSet);
+                if (iter != nodes.end())
+                {
+                    const Node &nodeGTO = iter->second;
+                    strategyActionGTO = solverGTO->GetStrategyActionFromNode(key, nodeGTO, percentageGTO, secondaryPercentageGTO);
+                }
+            }
 
             if (needComma)
             {
@@ -1987,24 +2006,95 @@ public:
             string hand = key.substr(7, 5);
             if (secondaryPercentage >= 0)
             {
-                std::cout << "\"" <<
-                    hand << " " <<
-                    std::round(percentage * 1000.0) / 1000.0 << " " <<
-                    std::round(secondaryPercentage * 1000.0) / 1000.0 <<
-                    "\"";
+                if (strategyActionGTO == STRATEGY_ACTIONS::NUM)
+                {
+                    if (solverGTO)
+                    {
+                        std::cout << "\"" <<
+                            hand << " " <<
+                            std::round(percentage * 1000.0) / 1000.0 << " " <<
+                            std::round(secondaryPercentage * 1000.0) / 1000.0 <<
+                            " GTO node not found\"";
+                    }
+                    else
+                    {
+                        std::cout << "\"" <<
+                            hand << " " <<
+                            std::round(percentage * 1000.0) / 1000.0 << " " <<
+                            std::round(secondaryPercentage * 1000.0) / 1000.0 <<
+                            "\"";
+                    }
+                }
+                else
+                {
+                    if (strategyAction == strategyActionGTO)
+                    {
+                        std::cout << "\"" <<
+                            hand << " " <<
+                            std::round(percentage * 1000.0) / 1000.0 << " " <<
+                            std::round(secondaryPercentage * 1000.0) / 1000.0 <<
+                            "\"";
+                    }
+                    else
+                    {
+                        std::cout << "\"" <<
+                            hand << " " <<
+                            std::round(percentage * 1000.0) / 1000.0 << " " <<
+                            std::round(secondaryPercentage * 1000.0) / 1000.0 <<
+                            " deviation from " <<
+                            strategyActionStrings[(int)strategyActionGTO] <<
+                            std::round(percentageGTO * 1000.0) / 1000.0 << " " <<
+                            std::round(secondaryPercentageGTO * 1000.0) / 1000.0 <<
+                            "\"";
+                    }
+                }
             }
             else
             {
-                std::cout << "\"" <<
-                    hand << " " <<
-                    std::round(percentage * 1000.0) / 1000.0 <<
-                    "\"";
+                if (strategyActionGTO == STRATEGY_ACTIONS::NUM)
+                {
+                    if (solverGTO)
+                    {
+                        std::cout << "\"" <<
+                            hand << " " <<
+                            std::round(percentage * 1000.0) / 1000.0 <<
+                            " GTO node not found\"";
+                    }
+                    else
+                    {
+                        std::cout << "\"" <<
+                            hand << " " <<
+                            std::round(percentage * 1000.0) / 1000.0 <<
+                            "\"";
+                    }
+                }
+                else
+                {
+                    if (strategyAction == strategyActionGTO)
+                    {
+                        std::cout << "\"" <<
+                            hand << " " <<
+                            std::round(percentage * 1000.0) / 1000.0 <<
+                            "\"";
+                    }
+                    else
+                    {
+                        std::cout << "\"" <<
+                            hand << " " <<
+                            std::round(percentage * 1000.0) / 1000.0 <<
+                            " deviation from " <<
+                            strategyActionStrings[(int)strategyActionGTO] <<
+                            std::round(percentageGTO * 1000.0) / 1000.0 << " " <<
+                            std::round(secondaryPercentageGTO * 1000.0) / 1000.0 <<
+                            "\"";
+                    }
+                }
             }
             needComma = true;
         }
     }
     
-    void Print()
+    void Print(const Solver *solverGTO)
     {
         map<string, Node, pokerStringCompare> sortedNodes;
         map<STRATEGY_ACTIONS, map<string, map<string, Node, pokerStringCompare> > > nodesPerSpot;
@@ -2039,7 +2129,7 @@ public:
         for (const auto & [ key, node ] : sortedNodes)
         {
             double percentage, secondaryPercentage;
-            STRATEGY_ACTIONS strategyAction = GetStrategyActionFromNode(sortedNodes, key, node, percentage, secondaryPercentage);
+            STRATEGY_ACTIONS strategyAction = GetStrategyActionFromNode(key, node, percentage, secondaryPercentage);
             
             int flop0 = StringToCard(node.infoSet.substr(0,2));
             int flop1 = StringToCard(node.infoSet.substr(2,2));
@@ -2055,7 +2145,13 @@ public:
             nodesPerSpot[strategyAction][handCategoryString].insert({key, node});
         }
         
-        std::cout << "\n{\n\"Iterations\": " << NUM_ITERATIONS << ",\n\"Total ev\": " << estimatedEV << ",\n";
+        std::cout << "\n{\n\"Iterations\": " <<
+            NUM_ITERATIONS <<
+            ",\n\"Total ev\": " <<
+            estimatedEV <<
+            ",\n\"GTO ev\": " <<
+            solverGTO->estimatedEV <<
+            ",\n";
 
         string firstInfoSet = sortedNodes.begin()->first;
         string flop = firstInfoSet.substr(0, 7);
@@ -2080,7 +2176,8 @@ public:
                     std::cout << ",\n";
                 }
                 std::cout << "\"" << handCategoryString << "\":[\n";
-                PrintActions(nodesForThisHandCategory);
+                
+                PrintActions(nodesForThisHandCategory, solverGTO);
                 std::cout << "\n]";
                 needsComma = true;
             }
@@ -2104,6 +2201,7 @@ public:
             ShuffleDeck(deck);
             CFR(deck, "", 1, 1, false);
         }
+        cout << "\n";
     }
     void NormalizeStrategy()
     {
@@ -2141,14 +2239,26 @@ public:
             ShuffleDeck(deck);
             estimatedEV += CFR(deck, "", 1, 1, true);
         }
+        cout << "\n";
         estimatedEV /= NUM_ITERATIONS_FOR_EV_CALCULATION;
     }
 };
 
 int main(int argc, const char * argv[]) {
     srand((unsigned int)time(0));
+    
+    
+    Solver solverGTO;
+    solverGTO.NUM_ITERATIONS = 10000000;
+    solverGTO.HARD_CODE_FLOP0 = (int)RANKS::FOUR * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+    solverGTO.HARD_CODE_FLOP1 = (int)RANKS::J * (int)SUITS::NUM + (int)SUITS::SPADES;
+    solverGTO.HARD_CODE_FLOP2 = (int)RANKS::A * (int)SUITS::NUM + (int)SUITS::HEARTS;
+    solverGTO.IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO = false;
+    solverGTO.IP_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
+    solverGTO.Solve();
+    solverGTO.estimateEV();
 
-    bool NORMALIZE_STRATEGY = true;
+    
 
     Solver solver;
     solver.NUM_ITERATIONS = 10000000;
@@ -2158,18 +2268,11 @@ int main(int argc, const char * argv[]) {
     solver.IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO = true;
     solver.IP_USES_FIXED_STRATEGY_WHEN_BET_TO = true;
     solver.Solve();
-    if (NORMALIZE_STRATEGY)
-    {
-        solver.NormalizeStrategy();
-    }
-    solver.estimateEV();
-    solver.Print();
 
-//    solver.IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO = true;
-//    solver.IP_USES_FIXED_STRATEGY_WHEN_BET_TO = true;
-//    solver.estimateEV();
-//    
-//    solver.Print();
+    solver.NormalizeStrategy();
+
+    solver.estimateEV();
+    solver.Print(&solverGTO);
 
     return 0;
 }

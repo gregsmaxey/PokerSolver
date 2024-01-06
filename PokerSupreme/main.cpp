@@ -2250,9 +2250,9 @@ int main(int argc, const char * argv[]) {
     
     Solver solverGTO;
     solverGTO.NUM_ITERATIONS = 10000000;
-    solverGTO.HARD_CODE_FLOP0 = (int)RANKS::FOUR * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
-    solverGTO.HARD_CODE_FLOP1 = (int)RANKS::J * (int)SUITS::NUM + (int)SUITS::SPADES;
-    solverGTO.HARD_CODE_FLOP2 = (int)RANKS::A * (int)SUITS::NUM + (int)SUITS::HEARTS;
+    solverGTO.HARD_CODE_FLOP0 = (int)RANKS::TWO * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
+    solverGTO.HARD_CODE_FLOP1 = (int)RANKS::TWO * (int)SUITS::NUM + (int)SUITS::SPADES;
+    solverGTO.HARD_CODE_FLOP2 = (int)RANKS::K * (int)SUITS::NUM + (int)SUITS::HEARTS;
     solverGTO.IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO = false;
     solverGTO.IP_USES_FIXED_STRATEGY_WHEN_BET_TO = false;
     solverGTO.Solve();
@@ -2261,10 +2261,10 @@ int main(int argc, const char * argv[]) {
     
 
     Solver solver;
-    solver.NUM_ITERATIONS = 10000000;
-    solver.HARD_CODE_FLOP0 = (int)RANKS::FOUR * (int)SUITS::NUM + (int)SUITS::DIAMONDS;
-    solver.HARD_CODE_FLOP1 = (int)RANKS::J * (int)SUITS::NUM + (int)SUITS::SPADES;
-    solver.HARD_CODE_FLOP2 = (int)RANKS::A * (int)SUITS::NUM + (int)SUITS::HEARTS;
+    solver.NUM_ITERATIONS = solverGTO.NUM_ITERATIONS;
+    solver.HARD_CODE_FLOP0 = solverGTO.HARD_CODE_FLOP0;
+    solver.HARD_CODE_FLOP1 = solverGTO.HARD_CODE_FLOP1;
+    solver.HARD_CODE_FLOP2 = solverGTO.HARD_CODE_FLOP2;
     solver.IP_USES_FIXED_STRATEGY_WHEN_CHECKED_TO = true;
     solver.IP_USES_FIXED_STRATEGY_WHEN_BET_TO = true;
     solver.Solve();
